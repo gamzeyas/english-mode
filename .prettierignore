@@ -1,0 +1,5 @@
+pnpm-lock.yaml
+.next
+node_modules
+src/components/ui
+English_Mode_PRD_v1.md
