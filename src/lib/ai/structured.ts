@@ -8,6 +8,7 @@ import {
   getAnthropic,
 } from "@/lib/ai/client";
 import { getAiConfig } from "@/lib/ai/config";
+import { assertAiRateLimit } from "@/lib/ai/rate-limit";
 import { recordUsage } from "@/lib/ai/usage";
 import { SessionError } from "@/lib/sessions/errors";
 
@@ -26,6 +27,7 @@ export async function runStructured<T extends z.ZodType>(input: {
   maxTokens?: number;
 }): Promise<z.infer<T>> {
   const { analysisModel } = getAiConfig();
+  await assertAiRateLimit(input.userId);
   try {
     const response = await getAnthropic().beta.messages.parse({
       ...fallbackOptions(),

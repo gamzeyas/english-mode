@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BrandMark } from "@/components/layout/brand-mark";
 import { OnboardingGate } from "@/components/layout/onboarding-gate";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
 import { SideRail } from "@/components/layout/side-rail";
 
 /**
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SideRail />
       </Suspense>
       <div className="flex min-w-0 flex-1 flex-col">
+        <OfflineBanner />
         <header className="flex h-14 items-center border-b px-4 md:hidden">
           <Link
             href="/dashboard"

@@ -12,6 +12,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InstallApp } from "@/components/pwa/install-app";
+import { DataControls } from "@/components/settings/data-controls";
 import { signOut } from "@/lib/auth/actions";
 import { getActiveConsents, getCurrentUser, getProfile } from "@/lib/auth/dal";
 import { feedbackOptions, purposeOptions } from "@/lib/onboarding/schema";
@@ -90,9 +92,31 @@ async function SettingsContent() {
               value={active.has("voice_processing") ? "Granted" : "Not granted"}
             />
           </dl>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Veri dışa aktarma ve hesap silme Milestone 5&apos;te eklenecek.
-          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Install the app</CardTitle>
+          <CardDescription>
+            Ana ekrandan tam ekran açılır; bağlantı koparsa çevrimdışı ekranı
+            görürsün.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InstallApp />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your data</CardTitle>
+          <CardDescription>
+            Dışa aktar ya da hesabını tamamen sil (KVKK/GDPR).
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataControls />
         </CardContent>
       </Card>
 

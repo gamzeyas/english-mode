@@ -38,6 +38,12 @@ export function withApi<Args extends unknown[]>(
       if (!user) throw new SessionError("unauthorized");
       const profile = await getProfile();
       const body = await handler({ user, profile, requestId }, ...args);
+      // Handlers may return a ready Response (e.g. a file download).
+      if (body instanceof Response) {
+        for (const [key, value] of Object.entries(headers))
+          body.headers.set(key, value);
+        return body;
+      }
       return NextResponse.json(body ?? { ok: true }, { headers });
     } catch (error) {
       unstable_rethrow(error);

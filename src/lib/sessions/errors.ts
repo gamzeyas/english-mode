@@ -9,7 +9,8 @@ export type SessionErrorCode =
   | "ai_failed"
   | "conflict"
   | "duplicate"
-  | "not_ready";
+  | "not_ready"
+  | "rate_limited";
 
 const STATUS: Record<SessionErrorCode, number> = {
   unauthorized: 401,
@@ -23,6 +24,7 @@ const STATUS: Record<SessionErrorCode, number> = {
   conflict: 409,
   duplicate: 409,
   not_ready: 409,
+  rate_limited: 429,
 };
 
 /** Learner-facing (Turkish) messages; never include provider details. */
@@ -39,6 +41,7 @@ export const SESSION_ERROR_MESSAGES: Record<SessionErrorCode, string> = {
   conflict: "Bu kart başka bir sekmede güncellendi. Liste yenileniyor.",
   duplicate: "Bu ifade havuzunda zaten var.",
   not_ready: "Bu adım henüz hazır değil.",
+  rate_limited: "Çok hızlı gidiyorsun; bir dakika bekleyip tekrar dene.",
 };
 
 export class SessionError extends Error {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateCostUsd } from "@/lib/ai/config";
+import { AI_RATE_LIMITS, estimateCostUsd, exceedsLimit } from "@/lib/ai/config";
 import {
   buildLearnerContextPrompt,
   type LearnerContext,
@@ -74,5 +74,14 @@ describe("buildLearnerContextPrompt", () => {
     expect(prompt).toContain("British");
     expect(prompt).toContain("corrections come after the session");
     expect(prompt).toContain("you are Rachel, Senior recruiter");
+  });
+});
+
+describe("exceedsLimit", () => {
+  it("blocks only when a burst window is full", () => {
+    expect(exceedsLimit([0, 0])).toBe(false);
+    expect(exceedsLimit([AI_RATE_LIMITS[0].max - 1, 10])).toBe(false);
+    expect(exceedsLimit([AI_RATE_LIMITS[0].max, 10])).toBe(true);
+    expect(exceedsLimit([5, AI_RATE_LIMITS[1].max])).toBe(true);
   });
 });

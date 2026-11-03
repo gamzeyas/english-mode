@@ -4,7 +4,9 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 4 — scenarios, assignments, writing.** Claude text coach with grounded
+> **Status: Milestone 5 — PWA hardening.** Installable PWA with an offline page and
+> connectivity banner, error boundaries, security headers, AI burst rate limits, server error
+> telemetry, full data export and account deletion. Built on Milestone 4: Claude text coach with grounded
 > feedback, career/founder/client/social roleplays with an evidence-based rubric debrief, a
 > deterministic daily assignment planner (submit, skip, reschedule, swap), a writing coach with
 > revision exercises, a baseline + fortnightly matched written assessment, FSRS reviews and
@@ -133,19 +135,28 @@ tests/unit, tests/e2e
 | 2   | Text AI coach end-to-end, feedback analyzer     | ✅     |
 | 3   | Learning pool, FSRS reviews                     | ✅     |
 | 4   | Scenarios, assignments, writing coach, baseline | ✅     |
-| 5   | PWA hardening, deployment                       | next   |
+| 5   | PWA hardening, deployment                       | ✅     |
 | 6   | Recorded voice + transcription                  |        |
 | 7   | Realtime voice, pronunciation lab               |        |
 | 8   | Adaptive planning, notifications                |        |
 
 ## Known limitations
 
-- Coach replies are not streamed yet. Rate limiting arrives with Milestone 5 hardening.
+- Coach replies are not streamed yet. Rate limits cover Claude calls only (20/min, 150/10 min
+  per learner; no daily cap by design).
+- The service worker never caches pages or API data (privacy); offline you get a static
+  "You're offline" page, and soft navigations resume when the connection returns.
 - The baseline is text-only; the optional voice recording part needs Milestone 6.
 - Review assignments are completed with "Mark done" once at least one card was graded that day;
   conversation/roleplay assignments complete when the linked session ends with a learner reply.
-- Data export and account deletion arrive in Milestone 5; deleting the auth user already
-  cascades every row.
+- Settings → "Your data": JSON export of every learner-owned row and typed-confirmation
+  account deletion (cascades through all tables; no audio objects exist yet).
 - The Supabase project runs in `us-east-1`.
 - Unknown dynamic IDs render the not-found page; with partial prerendering the HTTP status may
   remain `200` once streaming has started (documented Next.js behavior, `noindex` is still set).
+
+## Deployment
+
+Vercel project `english-mode` (team `bluechip2`). Production env vars: Supabase (Marketplace
+integration), `ANTHROPIC_API_KEY`, `ALLOWED_EMAILS`. Deploy with `vercel deploy --prod`; then
+sign in at the production URL with the account created by `pnpm user:create`.

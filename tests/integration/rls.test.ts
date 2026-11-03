@@ -385,3 +385,58 @@ describe("assignments, submissions, writing, assessments (Milestone 4)", () => {
     expect(gone).toEqual([]);
   });
 });
+
+describe("account erasure (PRD §14)", () => {
+  it("deleting the auth user erases every learner-owned row", async () => {
+    const c = await createTestUser(admin);
+    const { data: session } = await c.client
+      .from("sessions")
+      .insert({ user_id: c.id, mode: "text" })
+      .select("id")
+      .single();
+    await c.client.from("messages").insert({
+      session_id: session!.id,
+      user_id: c.id,
+      role: "user",
+      content: "bye",
+      sequence_number: 0,
+    });
+    await c.client.from("learning_items").insert({
+      user_id: c.id,
+      phrase: "See you",
+      normalized_phrase: "see you",
+    });
+    await c.client.from("assignments").insert({
+      user_id: c.id,
+      title: "x",
+      instructions: "x",
+      kind: "review",
+      scheduled_for: "2026-11-03",
+    });
+    await admin.from("writing_entries").insert({
+      user_id: c.id,
+      source_text: "x",
+      intent: "x",
+      register: "casual",
+      coach_version: "test",
+      response: {},
+    });
+
+    await deleteTestUser(admin, c);
+
+    for (const table of [
+      "profiles",
+      "sessions",
+      "messages",
+      "learning_items",
+      "assignments",
+      "writing_entries",
+    ] as const) {
+      const { count } = await admin
+        .from(table)
+        .select("user_id", { count: "exact", head: true })
+        .eq("user_id", c.id);
+      expect(count, table).toBe(0);
+    }
+  });
+});

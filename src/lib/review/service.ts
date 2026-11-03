@@ -9,6 +9,7 @@ import {
   getAnthropic,
 } from "@/lib/ai/client";
 import { getAiConfig } from "@/lib/ai/config";
+import { assertAiRateLimit } from "@/lib/ai/rate-limit";
 import { recordUsage } from "@/lib/ai/usage";
 import { startOfLocalDay } from "@/lib/learning/day";
 import { SessionError } from "@/lib/sessions/errors";
@@ -186,6 +187,7 @@ export async function evaluateAttempt(
 ) {
   const item = await loadItem(itemId, user.id);
   const { analysisModel } = getAiConfig();
+  await assertAiRateLimit(user.id);
   try {
     const response = await getAnthropic().beta.messages.parse({
       ...fallbackOptions(),

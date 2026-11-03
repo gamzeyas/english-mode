@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#14151c" />
+    <title>Offline · English Mode</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: #14151c;
+        color: #f1f2f6;
+        font:
+          16px/1.5 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      main {
+        max-width: 22rem;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      img {
+        width: 56px;
+        height: 56px;
+      }
+      h1 {
+        font-size: 1.35rem;
+        margin: 1rem 0 0.5rem;
+      }
+      p {
+        color: #a9adbd;
+        margin: 0 0 1.5rem;
+      }
+      button {
+        min-height: 48px;
+        padding: 0 1.5rem;
+        border: 0;
+        border-radius: 0.6rem;
+        background: #f2b34a;
+        color: #2a1d08;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:focus-visible {
+        outline: 3px solid #f2b34a;
+        outline-offset: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/manifest-assets/icon.svg" alt="" />
+      <h1>You're offline</h1>
+      <p lang="tr">
+        İnternet bağlantısı yok. Bağlantı gelince sayfayı yenile; yazdığın
+        mesajlar ve tekrarların sunucuda güvende.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

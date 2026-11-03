@@ -30,6 +30,23 @@ export const DEFAULT_MODEL = "claude-opus-5-5";
 export const MAX_USER_TURNS_PER_SESSION = 40;
 export const MAX_MESSAGE_CHARS = 2000;
 
+/**
+ * Burst protection for Claude calls (PRD §14 abuse protection). Short windows
+ * only — there is deliberately no daily spend cap. Counts are read from
+ * ai_usage_logs, so the limit holds across serverless instances.
+ */
+export const AI_RATE_LIMITS = [
+  { windowMs: 60_000, max: 20 },
+  { windowMs: 10 * 60_000, max: 150 },
+] as const;
+
+export function exceedsLimit(
+  counts: number[],
+  limits: readonly { max: number }[] = AI_RATE_LIMITS,
+): boolean {
+  return limits.some((limit, index) => (counts[index] ?? 0) >= limit.max);
+}
+
 export function getAiConfig() {
   const env = getServerEnv();
   return {

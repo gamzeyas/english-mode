@@ -44,4 +44,5 @@ export const postJson = <T>(url: string, body?: unknown) =>
 export const getJson = <T>(url: string) => request<T>("GET", url);
 export const patchJson = <T>(url: string, body: unknown) =>
   request<T>("PATCH", url, body);
-export const deleteJson = <T>(url: string) => request<T>("DELETE", url);
+export const deleteJson = <T>(url: string, body?: unknown) =>
+  request<T>("DELETE", url, body);

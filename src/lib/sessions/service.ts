@@ -23,6 +23,7 @@ import {
   type LearnerContext,
   type ScenarioDifficulty,
 } from "@/lib/ai/prompts/coach";
+import { assertAiRateLimit } from "@/lib/ai/rate-limit";
 import { recordUsage } from "@/lib/ai/usage";
 import {
   assignmentForSession,
@@ -312,6 +313,7 @@ async function generateAndStoreReply(
   sequenceNumber: number,
 ): Promise<MessageRow> {
   const { chatModel } = getAiConfig();
+  await assertAiRateLimit(user.id);
   const history = (await loadMessages(supabase, sessionId))
     .filter((m) => m.role === "user" || m.role === "assistant")
     .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
@@ -617,6 +619,7 @@ export async function ensureFeedback(
 
   try {
     const { analysisModel } = getAiConfig();
+    await assertAiRateLimit(user.id);
     const context = metadata.context;
     const scenario = session.scenario_id
       ? (
