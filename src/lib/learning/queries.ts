@@ -1,10 +1,11 @@
 import "server-only";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { localDayKey } from "@/lib/learning/day";
+import { toLearningItem } from "@/lib/learning/map";
 import { createClient } from "@/lib/supabase/server";
 import type { LearningItem } from "@/types/domain";
 
-/** The learner's pool (RLS-scoped), newest first. */
+/** The learner's pool incl. archived items (RLS-scoped), newest first. */
 export async function getLearningItems(): Promise<LearningItem[]> {
   const user = await getCurrentUser();
   const supabase = await createClient();
@@ -12,24 +13,11 @@ export async function getLearningItems(): Promise<LearningItem[]> {
     .from("learning_items")
     .select("*")
     .eq("user_id", user.id)
-    .neq("status", "archived")
     .order("created_at", { ascending: false });
   if (error)
     throw new Error("Learning items could not be loaded.", { cause: error });
 
-  return data.map((row) => ({
-    id: row.id,
-    phrase: row.phrase,
-    normalizedPhrase: row.normalized_phrase,
-    meaningTr: row.meaning_tr,
-    example: row.example,
-    category: row.category,
-    status: row.status as LearningItem["status"],
-    sourceContext: row.source_context,
-    dueAt: row.due_at,
-    lastReviewedAt: row.last_reviewed_at,
-    createdAt: row.created_at,
-  }));
+  return data.map(toLearningItem);
 }
 
 /** Honest, non-punitive weekly numbers derived from real sessions. */

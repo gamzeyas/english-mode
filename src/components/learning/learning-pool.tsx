@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AddPhraseForm } from "@/components/learning/add-phrase-form";
 import { PhraseCard } from "@/components/learning/phrase-card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   filterPool,
@@ -13,18 +15,31 @@ import {
 import type { LearningItem } from "@/types/domain";
 
 export function LearningPool({
-  items,
+  items: initialItems,
   now,
 }: {
   items: LearningItem[];
   now: string;
 }) {
+  const [items, setItems] = useState(initialItems);
   const [filter, setFilter] = useState<PoolFilter>("all");
   const reference = new Date(now);
   const visible = filterPool(items, filter, reference);
 
+  const dueCount = filterPool(items, "due", reference).length;
+
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2">
+        {dueCount > 0 && (
+          <Button asChild className="h-11">
+            <Link href="/review">Review {dueCount} due</Link>
+          </Button>
+        )}
+        <AddPhraseForm
+          onAdded={(item) => setItems((current) => [item, ...current])}
+        />
+      </div>
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Scrolls horizontally on narrow screens instead of wrapping. */}
         <Tabs
@@ -73,7 +88,23 @@ export function LearningPool({
         >
           {visible.map((item) => (
             <li key={item.id}>
-              <PhraseCard item={item} due={isDue(item, reference)} />
+              <PhraseCard
+                item={item}
+                due={isDue(item, reference)}
+                now={now}
+                onChange={(updated) =>
+                  setItems((current) =>
+                    current.map((entry) =>
+                      entry.id === updated.id ? updated : entry,
+                    ),
+                  )
+                }
+                onRemove={(id) =>
+                  setItems((current) =>
+                    current.filter((entry) => entry.id !== id),
+                  )
+                }
+              />
             </li>
           ))}
         </ul>

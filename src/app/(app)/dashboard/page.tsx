@@ -156,11 +156,19 @@ async function DueCard() {
             ))}
           </ul>
         )}
-        <Button asChild variant="secondary" className="h-11 w-full">
-          <Link href="/learning-pool">
-            Open learning pool <ArrowRight aria-hidden />
-          </Link>
-        </Button>
+        {due.length > 0 ? (
+          <Button asChild className="h-11 w-full">
+            <Link href="/review">
+              Start review <ArrowRight aria-hidden />
+            </Link>
+          </Button>
+        ) : (
+          <Button asChild variant="secondary" className="h-11 w-full">
+            <Link href="/learning-pool">
+              Open learning pool <ArrowRight aria-hidden />
+            </Link>
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

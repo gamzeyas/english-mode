@@ -1,7 +1,16 @@
 import type { Metadata } from "next";
-import { BarChart3 } from "lucide-react";
+import { Suspense } from "react";
 import { PageContainer, PageHeader } from "@/components/layout/app-shell";
-import { ComingSoon } from "@/components/coming-soon";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getProfile } from "@/lib/auth/dal";
+import { getProgressStats, MIN_SAMPLE } from "@/lib/learning/progress";
 
 export const metadata: Metadata = { title: "Progress" };
 
@@ -10,21 +19,169 @@ export default function ProgressPage() {
     <PageContainer>
       <PageHeader
         eyebrow="Progress"
-        title="Progress"
-        description="Kanıta dayalı ilerleme: tekrarlar, oturumlar ve karşılaştırılabilir görevler. Şişirilmiş puan yok."
+        title="Your progress"
+        description="Gerçek oturum ve tekrarlarından hesaplanan gayriresmî koçluk ölçüleri. Resmî seviye (CEFR) değerlendirmesi değildir."
       />
-      <ComingSoon
-        icon={BarChart3}
-        milestone="Milestone 3–4"
-        title="Evidence-based progress dashboard"
-        description="Metrics will be derived from your real sessions and reviews, with sample-size warnings and no unearned percentage claims."
-        bullets={[
-          "Active days in the last 7 / 28 days (no punitive streaks)",
-          "Due, reviewed and mastered phrases",
-          "Error frequency per 100 comparable utterances",
-          "Baseline and fortnightly matched tasks",
-        ]}
-      />
+      <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
+        <Stats />
+      </Suspense>
     </PageContainer>
+  );
+}
+
+async function Stats() {
+  const profile = await getProfile();
+  const stats = await getProgressStats(profile.timezone);
+  const smallSample = stats.reviews28 < MIN_SAMPLE;
+  const pool = stats.statusCounts;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric
+          label="Active days"
+          value={`${stats.activeDays7}/7`}
+          hint={`${stats.activeDays28}/28 in the last 4 weeks`}
+        />
+        <Metric
+          label="Sessions (28d)"
+          value={String(stats.sessionsCompleted28)}
+          hint="Completed conversations"
+        />
+        <Metric
+          label="Reviews"
+          value={String(stats.reviews7)}
+          hint={`${stats.reviews28} in the last 28 days`}
+        />
+        <Metric
+          label="Successful recalls (28d)"
+          value={String(stats.successfulRetrievals28)}
+          hint={
+            stats.recallRate28 === null
+              ? "No reviews yet"
+              : `${Math.round(stats.recallRate28 * 100)}% graded Good/Easy${smallSample ? " · small sample" : ""}`
+          }
+        />
+      </div>
+      {smallSample && stats.reviews28 > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Not: Son 28 günde {stats.reviews28} tekrar var; oranlar {MIN_SAMPLE}+
+          tekrardan sonra daha anlamlı olur.
+        </p>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2>Learning pool</h2>
+            </CardTitle>
+            <CardDescription>
+              “Mastered” is a label for long FSRS intervals; it can change back.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-3 gap-3 text-center">
+              <Count label="New" value={pool.new ?? 0} />
+              <Count
+                label="Learning"
+                value={(pool.learning ?? 0) + (pool.review ?? 0)}
+              />
+              <Count label="Mastered" value={pool.mastered ?? 0} />
+              <Count label="Suggested" value={pool.suggested ?? 0} />
+              <Count label="Archived" value={pool.archived ?? 0} />
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <h2>Recurring patterns</h2>
+            </CardTitle>
+            <CardDescription>
+              Most frequent correction patterns from your session feedback.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.patterns.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No patterns yet — they appear after analyzed conversations.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {stats.patterns.map((pattern) => (
+                  <li
+                    key={pattern.key}
+                    className="rounded-lg border p-3 text-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {pattern.key.replaceAll("_", " ")}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        ×{pattern.occurrences}
+                      </span>
+                    </div>
+                    {pattern.example && (
+                      <p className="mt-1 text-xs">
+                        <span className="text-muted-foreground line-through">
+                          {pattern.example.original}
+                        </span>{" "}
+                        →{" "}
+                        <span className="text-success">
+                          {pattern.example.improved}
+                        </span>
+                      </p>
+                    )}
+                    {pattern.explanationTr && (
+                      <p
+                        lang="tr"
+                        className="mt-1 text-xs text-muted-foreground"
+                      >
+                        {pattern.explanationTr}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <Card size="sm">
+      <CardContent className="space-y-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-heading text-2xl font-semibold tabular-nums">
+          {value}
+        </p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Count({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg bg-secondary/50 px-2 py-3">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="font-heading text-xl font-semibold tabular-nums">
+        {value}
+      </dd>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { LearningItem } from "@/types/domain";
 
-export type PoolFilter = "all" | "new" | "learning" | "due" | "mastered";
+export type PoolFilter =
+  "all" | "new" | "learning" | "due" | "mastered" | "archived";
 
 export const poolFilters: { value: PoolFilter; label: string }[] = [
   { value: "all", label: "All" },
@@ -8,9 +9,10 @@ export const poolFilters: { value: PoolFilter; label: string }[] = [
   { value: "new", label: "New" },
   { value: "learning", label: "Learning" },
   { value: "mastered", label: "Mastered" },
+  { value: "archived", label: "Archived" },
 ];
 
-const ACTIVE_STATUSES = new Set(["new", "learning", "review"]);
+const ACTIVE_STATUSES = new Set(["new", "learning", "review", "mastered"]);
 
 /** An item is due when it is in an active study state and its due date has passed. */
 export function isDue(item: LearningItem, now: Date): boolean {
@@ -39,5 +41,7 @@ export function filterPool(
       );
     case "mastered":
       return items.filter((item) => item.status === "mastered");
+    case "archived":
+      return items.filter((item) => item.status === "archived");
   }
 }

@@ -6,7 +6,9 @@ export type SessionErrorCode =
   | "turn_limit"
   | "ai_not_configured"
   | "ai_refused"
-  | "ai_failed";
+  | "ai_failed"
+  | "conflict"
+  | "duplicate";
 
 const STATUS: Record<SessionErrorCode, number> = {
   unauthorized: 401,
@@ -17,6 +19,8 @@ const STATUS: Record<SessionErrorCode, number> = {
   ai_not_configured: 503,
   ai_refused: 422,
   ai_failed: 502,
+  conflict: 409,
+  duplicate: 409,
 };
 
 /** Learner-facing (Turkish) messages; never include provider details. */
@@ -30,6 +34,8 @@ export const SESSION_ERROR_MESSAGES: Record<SessionErrorCode, string> = {
   ai_not_configured: "AI koçu henüz yapılandırılmadı (API anahtarı eksik).",
   ai_refused: "Koç bu mesaja yanıt veremedi. Farklı bir şekilde yazmayı dene.",
   ai_failed: "Koça şu an ulaşılamıyor. Mesajın kaydedildi; tekrar dene.",
+  conflict: "Bu kart başka bir sekmede güncellendi. Liste yenileniyor.",
+  duplicate: "Bu ifade havuzunda zaten var.",
 };
 
 export class SessionError extends Error {

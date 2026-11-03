@@ -13,7 +13,7 @@ export default function LearningPoolPage() {
       <PageHeader
         eyebrow="Pool"
         title="Your learning pool"
-        description="Konuşmalarından çıkan ve senin onayladığın ifadeler. Tekrar oturumları (FSRS) Milestone 3'te gelecek."
+        description="Konuşmalarından çıkan ya da kendi eklediğin ifadeler. Tekrar zamanını FSRS belirler; düzenleyebilir, arşivleyebilir veya silebilirsin."
       />
       <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
         <PoolLoader />

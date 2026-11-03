@@ -79,6 +79,8 @@ test("page has no horizontal overflow", async ({ page }) => {
     "/conversation/new",
     "/settings",
     "/onboarding",
+    "/review",
+    "/progress",
   ]) {
     await page.goto(path);
     const overflow = await page.evaluate(

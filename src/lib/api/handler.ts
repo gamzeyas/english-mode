@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { NextResponse } from "next/server";
+import { unstable_rethrow } from "next/navigation";
+import { connection, NextResponse } from "next/server";
 import { z } from "zod";
 import { getProfile, type CurrentUser, type Profile } from "@/lib/auth/dal";
 import { isEmailAllowed } from "@/lib/env";
@@ -27,6 +28,9 @@ export function withApi<Args extends unknown[]>(
   handler: (context: ApiContext, ...args: Args) => Promise<unknown>,
 ) {
   return async (...args: Args) => {
+    // API responses are per-user: never let a GET handler be prerendered.
+    // Outside the try so Next's "stop prerendering" signal is not swallowed.
+    await connection();
     const requestId = randomUUID();
     const headers = { "x-request-id": requestId, "cache-control": "no-store" };
     try {
@@ -36,6 +40,7 @@ export function withApi<Args extends unknown[]>(
       const body = await handler({ user, profile, requestId }, ...args);
       return NextResponse.json(body ?? { ok: true }, { headers });
     } catch (error) {
+      unstable_rethrow(error);
       if (error instanceof SessionError) {
         return NextResponse.json(
           { error: { code: error.code, message: error.message }, requestId },

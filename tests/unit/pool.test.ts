@@ -40,8 +40,14 @@ describe("isDue", () => {
     ).toBe(false);
   });
 
-  it("ignores suggested, mastered and archived items", () => {
-    for (const status of ["suggested", "mastered", "archived"] as const) {
+  it("treats due mastered items as due (mastered is only a label)", () => {
+    expect(
+      isDue(item({ status: "mastered", dueAt: "2026-01-01T00:00:00Z" }), now),
+    ).toBe(true);
+  });
+
+  it("ignores suggested and archived items", () => {
+    for (const status of ["suggested", "archived"] as const) {
       expect(isDue(item({ status, dueAt: "2026-01-01T00:00:00Z" }), now)).toBe(
         false,
       );
@@ -75,6 +81,7 @@ describe("filterPool", () => {
   it("returns only due items for the due filter", () => {
     const due = filterPool(pool, "due", now);
     expect(due).toHaveLength(2);
+    expect(filterPool(pool, "archived", now)).toEqual([]);
     expect(due.every((entry) => isDue(entry, now))).toBe(true);
   });
 });

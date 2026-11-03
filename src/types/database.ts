@@ -818,7 +818,27 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      apply_review: {
+        Args: {
+          p_ai_suggested_grade: number;
+          p_client_request_id: string;
+          p_due_at: string;
+          p_expected_state: Json;
+          p_grade: number;
+          p_item_id: string;
+          p_next_state: Json;
+          p_previous_state: Json;
+          p_response_text: string;
+          p_reviewed_at: string;
+          p_status: string;
+        };
+        Returns: {
+          due_at: string;
+          duplicate: boolean;
+          review_log_id: string;
+          status: string;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;

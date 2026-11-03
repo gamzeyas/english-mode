@@ -4,9 +4,10 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 2 — text AI coach.** Real conversations with Claude, grounded post-session
-> feedback, learning-pool suggestions, usage logging and a daily budget cap. Scenario detail
-> pages, the daily mission template and progress analytics still show labeled **demo** content.
+> **Status: Milestone 3 — learning intelligence.** Claude text coach with grounded feedback, an
+> editable learning pool, FSRS spaced-retrieval reviews with immutable logs, and progress
+> analytics. Scenario detail pages and the daily mission template still show labeled **demo**
+> content.
 
 ## Stack
 
@@ -63,6 +64,18 @@ PWA icons are generated from the SVGs in `public/manifest-assets/` with
   no daily spend cap (owner's choice); sessions are capped at 40 learner turns and 2000 characters
   per message. Switch models with `AI_CHAT_MODEL` / `AI_ANALYSIS_MODEL`.
 
+## Spaced retrieval (FSRS)
+
+- `src/lib/srs/scheduler.ts` wraps `ts-fsrs` 6 (`DefaultScheduler`, FSRS-7 pinned, desired
+  retention 0.9). Cards live as JSON in `learning_items.fsrs_state`; `due_at` is indexed.
+- Review flow (`/review`): the prompt shows the Turkish meaning and the example with the phrase
+  blanked out (the API never sends the phrase before the attempt) → reveal with a local match
+  hint → optional advisory AI check → the learner's own grade (Again/Hard/Good/Easy) decides.
+- `apply_review()` (Postgres, security invoker) writes the immutable `review_logs` row and the
+  new card state in one transaction; idempotent per `client_request_id`, and a grade computed
+  from a stale card state is rejected (`EM409`).
+- At most 5 brand-new cards per local day; "mastered" is a reversible label (stability ≥ 21 days).
+
 ## Security model
 
 - Every table has RLS; `anon` has no privileges; `authenticated` only gets the operations the app
@@ -87,7 +100,9 @@ src/types/database.ts generated from the database (pnpm db:types)
 src/app/manifest.ts   PWA web app manifest
 src/components/       layout (app shell, bottom nav, side rail), dashboard, conversation, learning, ui (shadcn)
 src/lib/demo/         DEMO data (PRD §13 starter profile, scenario templates) — replaced in Milestone 1+
-src/lib/learning/     pool filtering / due logic
+src/lib/learning/     pool queries, mutations, progress stats
+src/lib/srs/          FSRS scheduler wrapper, recall prompts/matching
+src/lib/review/       due queue, reveal, grading, advisory AI check
 src/lib/text/         phrase normalization for dedupe
 src/types/domain.ts   domain types aligned with the PRD §8 schema
 supabase/migrations/  schema, RLS/grants, scenario seed
@@ -111,8 +126,8 @@ tests/unit, tests/e2e
 
 ## Known limitations
 
-- Scenario detail pages, the daily mission template and progress analytics still render demo
-  content (labeled on screen). Coach replies are not streamed yet.
+- Scenario detail pages and the daily mission template still render demo content (labeled on
+  screen). Coach replies are not streamed yet.
 - Baseline assessment (`/assessment`) is deferred to Milestone 4 (it needs the AI evaluator).
 - Data export and account deletion arrive in Milestone 5; deleting the auth user already
   cascades every row.
