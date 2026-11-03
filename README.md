@@ -4,7 +4,10 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 5 — PWA hardening.** Installable PWA with an offline page and
+> **Status: Milestone 6 — voice recordings.** Record in chat, reviews and assignments; the
+> browser converts to 16 kHz mono WAV, Azure AI Speech fast transcription returns the text, and
+> the learner corrects it before sending (stored as `speech_transcript`). Raw audio is never
+> stored. Built on Milestone 5 — PWA hardening: Installable PWA with an offline page and
 > connectivity banner, error boundaries, security headers, AI burst rate limits, server error
 > telemetry, full data export and account deletion. Built on Milestone 4: Claude text coach with grounded
 > feedback, career/founder/client/social roleplays with an evidence-based rubric debrief, a
@@ -136,7 +139,7 @@ tests/unit, tests/e2e
 | 3   | Learning pool, FSRS reviews                     | ✅     |
 | 4   | Scenarios, assignments, writing coach, baseline | ✅     |
 | 5   | PWA hardening, deployment                       | ✅     |
-| 6   | Recorded voice + transcription                  |        |
+| 6   | Recorded voice + transcription                  | ✅     |
 | 7   | Realtime voice, pronunciation lab               |        |
 | 8   | Adaptive planning, notifications                |        |
 
@@ -146,7 +149,13 @@ tests/unit, tests/e2e
   per learner; no daily cap by design).
 - The service worker never caches pages or API data (privacy); offline you get a static
   "You're offline" page, and soft navigations resume when the connection returns.
-- The baseline is text-only; the optional voice recording part needs Milestone 6.
+- Voice needs `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`; without them recording works but the
+  server answers "not configured" and text input stays available. The real Azure test
+  (`tests/integration/azure-speech.test.ts`, synthetic `say` recording) runs once a key is set;
+  `E2E_REAL_VOICE=1` runs the browser flow against Azure.
+- Voice requires the voice-processing consent at version `2026-11-v2` (names Azure as the
+  subprocessor); older grants are asked again. Recordings are capped at 2 minutes.
+- The baseline assessment is still text-only.
 - Review assignments are completed with "Mark done" once at least one card was graded that day;
   conversation/roleplay assignments complete when the linked session ends with a learner reply.
 - Settings → "Your data": JSON export of every learner-owned row and typed-confirmation

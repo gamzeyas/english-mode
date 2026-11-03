@@ -10,7 +10,11 @@ export type SessionErrorCode =
   | "conflict"
   | "duplicate"
   | "not_ready"
-  | "rate_limited";
+  | "rate_limited"
+  | "consent_required"
+  | "voice_not_configured"
+  | "voice_failed"
+  | "no_speech";
 
 const STATUS: Record<SessionErrorCode, number> = {
   unauthorized: 401,
@@ -25,6 +29,10 @@ const STATUS: Record<SessionErrorCode, number> = {
   duplicate: 409,
   not_ready: 409,
   rate_limited: 429,
+  consent_required: 403,
+  voice_not_configured: 503,
+  voice_failed: 502,
+  no_speech: 422,
 };
 
 /** Learner-facing (Turkish) messages; never include provider details. */
@@ -42,6 +50,13 @@ export const SESSION_ERROR_MESSAGES: Record<SessionErrorCode, string> = {
   duplicate: "Bu ifade havuzunda zaten var.",
   not_ready: "Bu adım henüz hazır değil.",
   rate_limited: "Çok hızlı gidiyorsun; bir dakika bekleyip tekrar dene.",
+  consent_required:
+    "Sesli kullanım için ses işleme onayı gerekli. Ayarlar → Edit'ten verebilirsin.",
+  voice_not_configured:
+    "Ses servisi henüz yapılandırılmadı (Azure anahtarı eksik). Yazarak devam edebilirsin.",
+  voice_failed: "Kayıt yazıya çevrilemedi. Tekrar dene ya da yazarak devam et.",
+  no_speech:
+    "Kayıtta konuşma algılanamadı. Mikrofona biraz daha yakın konuşup tekrar dene.",
 };
 
 export class SessionError extends Error {

@@ -12,11 +12,17 @@ async function request<T>(
 ): Promise<ApiResult<T>> {
   let response: Response;
   try {
+    const isForm = body instanceof FormData;
     response = await fetch(url, {
       method,
       headers:
-        body === undefined ? undefined : { "content-type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+        body === undefined || isForm
+          ? undefined
+          : { "content-type": "application/json" },
+      body:
+        body === undefined || isForm
+          ? (body as FormData | undefined)
+          : JSON.stringify(body),
     });
   } catch {
     return { ok: false, status: 0, code: "network", error: NETWORK_ERROR };
@@ -46,3 +52,6 @@ export const patchJson = <T>(url: string, body: unknown) =>
   request<T>("PATCH", url, body);
 export const deleteJson = <T>(url: string, body?: unknown) =>
   request<T>("DELETE", url, body);
+/** Multipart upload (e.g. audio); same error contract as the JSON helpers. */
+export const postForm = <T>(url: string, form: FormData) =>
+  request<T>("POST", url, form);

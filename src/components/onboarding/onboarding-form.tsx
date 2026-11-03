@@ -244,13 +244,13 @@ export function OnboardingForm({
           defaultChecked={defaults.consentDataProcessing}
           required
           title="Store my learning data"
-          description="Konuşma metinlerin, tercihlerin ve öğrenme kartların hesabında saklanır; koçluk için yapay zekâ sağlayıcısına (OpenAI) gönderilebilir. İstediğin zaman dışa aktarabilir veya silebilirsin."
+          description="Konuşma metinlerin, tercihlerin ve öğrenme kartların hesabında saklanır; koçluk için yapay zekâ sağlayıcısına (Anthropic, Claude) gönderilir. İstediğin zaman dışa aktarabilir veya silebilirsin."
         />
         <ConsentRow
           name="consentVoiceProcessing"
           defaultChecked={defaults.consentVoiceProcessing}
           title="Process my voice recordings (optional)"
-          description="Ses kayıtların yazıya çevrilmek ve telaffuz analizi için işlenir. Ham ses varsayılan olarak kalıcı saklanmaz. Onay vermezsen yazı ile devam edersin."
+          description="Ses kayıtların yazıya çevrilmek (ve ileride telaffuz analizi) için Microsoft Azure Speech'e gönderilir. Ham ses saklanmaz; yalnızca süre bilgisi kaydedilir. Onay vermezsen yazıyla devam edersin."
         />
       </Section>
 

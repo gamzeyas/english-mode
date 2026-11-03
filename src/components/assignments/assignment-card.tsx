@@ -27,6 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceInput } from "@/components/voice/voice-input";
 
 const MAX_ANSWER = 4000;
 
@@ -127,8 +128,14 @@ export function AssignmentCard({
               onChange={(event) => setAnswer(event.target.value)}
               maxLength={MAX_ANSWER}
               rows={4}
-              placeholder="Write your answer in English…"
+              placeholder="Write or record your answer in English…"
               disabled={!!pending}
+            />
+            <VoiceInput
+              disabled={!!pending}
+              onTranscript={(text) =>
+                setAnswer((current) => (current ? `${current} ${text}` : text))
+              }
             />
             <Button
               type="submit"

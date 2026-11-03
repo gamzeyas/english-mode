@@ -33,3 +33,27 @@ export async function recordUsage(entry: {
   // Logging must never break the learner's request.
   if (error) console.error("[ai-usage] insert failed", error.code);
 }
+
+/** Reported Azure fast-transcription list price (USD per audio hour). */
+const AZURE_FAST_TRANSCRIPTION_USD_PER_HOUR = 0.36;
+
+/** Speech-to-text usage: audio seconds only, never the transcript. */
+export async function recordAudioUsage(entry: {
+  userId: string;
+  sessionId: string | null;
+  audioSeconds: number;
+}) {
+  const { error } = await createAdminClient()
+    .from("ai_usage_logs")
+    .insert({
+      user_id: entry.userId,
+      session_id: entry.sessionId,
+      provider: "azure",
+      model: "fast-transcription",
+      operation: "transcription",
+      audio_seconds: Math.round(entry.audioSeconds * 10) / 10,
+      estimated_cost_usd:
+        (entry.audioSeconds / 3600) * AZURE_FAST_TRANSCRIPTION_USD_PER_HOUR,
+    });
+  if (error) console.error("[ai-usage] audio insert failed", error.code);
+}

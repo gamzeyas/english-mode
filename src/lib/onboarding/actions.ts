@@ -80,14 +80,23 @@ async function syncConsent(
   const supabase = await createClient();
   const { data: active, error } = await supabase
     .from("consents")
-    .select("id")
+    .select("id, version")
     .eq("user_id", userId)
     .eq("consent_type", type)
     .is("revoked_at", null)
     .maybeSingle();
   if (error) return "Onaylar okunamadı. Tekrar dene.";
 
-  if (granted && !active) {
+  // Re-granting under newer wording replaces the old grant (audit trail kept).
+  if (granted && active && active.version !== CONSENT_VERSION) {
+    const { error: revokeError } = await supabase
+      .from("consents")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("id", active.id);
+    if (revokeError) return "Onay güncellenemedi. Tekrar dene.";
+  }
+
+  if (granted && (!active || active.version !== CONSENT_VERSION)) {
     const { error: insertError } = await supabase.from("consents").insert({
       user_id: userId,
       consent_type: type,

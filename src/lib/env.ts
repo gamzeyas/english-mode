@@ -28,6 +28,8 @@ export const serverEnvSchema = publicEnvSchema.extend({
   AI_ANALYSIS_MODEL: z.string().min(1).optional(),
   AZURE_SPEECH_KEY: optionalSecret,
   AZURE_SPEECH_REGION: z.string().min(1).optional(),
+  /** Optional custom endpoint (https://<resource>.cognitiveservices.azure.com). */
+  AZURE_SPEECH_ENDPOINT: z.url().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;

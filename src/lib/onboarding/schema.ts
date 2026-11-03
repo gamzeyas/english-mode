@@ -1,7 +1,11 @@
 import { z } from "zod";
 
 /** Version of the consent wording shown in onboarding; bump when it changes. */
-export const CONSENT_VERSION = "2026-11-v1";
+/**
+ * Bump when consent wording changes. v2 names the actual subprocessors
+ * (Anthropic for coaching, Microsoft Azure Speech for voice).
+ */
+export const CONSENT_VERSION = "2026-11-v2";
 
 export const purposeOptions = [
   {

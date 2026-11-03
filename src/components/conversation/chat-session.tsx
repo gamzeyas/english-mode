@@ -9,28 +9,20 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Mic,
-  RotateCcw,
-  SendHorizontal,
-  Square,
-} from "lucide-react";
+import { ArrowLeft, RotateCcw, SendHorizontal, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { postJson } from "@/lib/api/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { VoiceInput } from "@/components/voice/voice-input";
 import type { SessionView } from "@/lib/sessions/service";
 
 type ChatMessage = SessionView["messages"][number] & { pending?: boolean };
+type Modality = "text" | "speech_transcript";
 type FailedSend = {
   clientMessageId: string;
   content: string;
+  modality: Modality;
   error: string;
   retryable: boolean;
 };
@@ -41,6 +33,8 @@ export function ChatSession({ session }: { session: SessionView }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(session.messages);
   const [draft, setDraft] = useState("");
+  const [draftModality, setDraftModality] = useState<Modality>("text");
+  const composer = useRef<HTMLTextAreaElement>(null);
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState<FailedSend | null>(null);
   const [ending, setEnding] = useState(false);
@@ -58,13 +52,21 @@ export function ChatSession({ session }: { session: SessionView }) {
     ? `${session.scenario.personaName ?? "Coach"} · ${session.scenario.title}`
     : "Free conversation";
 
-  async function deliver(clientMessageId: string, content: string) {
+  async function deliver(
+    clientMessageId: string,
+    content: string,
+    modality: Modality,
+  ) {
     setSending(true);
     setFailed(null);
     const result = await postJson<{
       message: ChatMessage;
       assistantMessage: ChatMessage;
-    }>(`/api/sessions/${session.id}/messages`, { content, clientMessageId });
+    }>(`/api/sessions/${session.id}/messages`, {
+      content,
+      clientMessageId,
+      modality,
+    });
     setSending(false);
 
     if (result.ok) {
@@ -81,6 +83,7 @@ export function ChatSession({ session }: { session: SessionView }) {
     setFailed({
       clientMessageId,
       content,
+      modality,
       error: result.error,
       retryable: !["turn_limit", "not_active", "ai_not_configured"].includes(
         result.code,
@@ -104,7 +107,9 @@ export function ChatSession({ session }: { session: SessionView }) {
       },
     ]);
     setDraft("");
-    void deliver(clientMessageId, content);
+    const modality = draftModality;
+    setDraftModality("text");
+    void deliver(clientMessageId, content, modality);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -129,6 +134,7 @@ export function ChatSession({ session }: { session: SessionView }) {
           current ?? {
             clientMessageId: "",
             content: "",
+            modality: "text",
             error: result.error,
             retryable: false,
           },
@@ -249,7 +255,13 @@ export function ChatSession({ session }: { session: SessionView }) {
               <Button
                 variant="outline"
                 className="h-10"
-                onClick={() => deliver(failed.clientMessageId, failed.content)}
+                onClick={() =>
+                  deliver(
+                    failed.clientMessageId,
+                    failed.content,
+                    failed.modality,
+                  )
+                }
                 disabled={sending}
               >
                 <RotateCcw aria-hidden /> Retry
@@ -284,35 +296,28 @@ export function ChatSession({ session }: { session: SessionView }) {
           onSubmit={send}
           className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex items-end gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:bottom-0"
         >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {/* Wrapper keeps the tooltip reachable while the button is disabled. */}
-              <span
-                tabIndex={0}
-                className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/60"
-              >
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled
-                  className="size-12 rounded-full"
-                  aria-label="Record voice message (coming in Milestone 6)"
-                >
-                  <Mic aria-hidden className="size-5" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              Voice messages arrive in Milestone 6
-            </TooltipContent>
-          </Tooltip>
+          <VoiceInput
+            sessionId={session.id}
+            disabled={sending || !!failed}
+            statusPlacement="above"
+            onTranscript={(text) => {
+              // The learner can correct the transcript before sending.
+              setDraft((current) => (current ? `${current} ${text}` : text));
+              setDraftModality("speech_transcript");
+              composer.current?.focus();
+            }}
+          />
           <label htmlFor="composer" className="sr-only">
             Your message
           </label>
           <Textarea
             id="composer"
+            ref={composer}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              if (!event.target.value) setDraftModality("text");
+            }}
             onKeyDown={onKeyDown}
             placeholder={
               failed

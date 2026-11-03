@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceInput } from "@/components/voice/voice-input";
 
 type Queue = { cards: ReviewCard[]; newAllowance: number; newWaiting: number };
 type Reveal = {
@@ -243,9 +244,16 @@ function ReviewCardView({
             disabled={!!reveal}
             maxLength={2000}
             rows={2}
-            placeholder="Write a full sentence using the expression…"
+            placeholder="Write or say a full sentence using the expression…"
             className="min-h-16 text-[0.95rem]"
           />
+          {!reveal && (
+            <VoiceInput
+              onTranscript={(text) =>
+                setAnswer((current) => (current ? `${current} ${text}` : text))
+              }
+            />
+          )}
         </div>
 
         {!reveal ? (

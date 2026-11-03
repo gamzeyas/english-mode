@@ -376,7 +376,11 @@ export async function sendMessage(
   user: CurrentUser,
   profile: Profile,
   sessionId: string,
-  input: { content: string; clientMessageId: string },
+  input: {
+    content: string;
+    clientMessageId: string;
+    modality?: "text" | "speech_transcript";
+  },
 ) {
   const supabase = await createClient();
   const session = await loadSession(supabase, sessionId);
@@ -409,6 +413,7 @@ export async function sendMessage(
         user_id: user.id,
         role: "user",
         content: input.content,
+        modality: input.modality ?? "text",
         client_message_id: input.clientMessageId,
         sequence_number: nextSequence,
       })

@@ -24,6 +24,7 @@ setup("sign in and complete onboarding", async ({ page }) => {
   await page.getByText("15 min").click();
   await page.getByText("British (en-GB)").click();
   await page.getByText("Store my learning data").click();
+  await page.getByText("Process my voice recordings").click();
   await page.getByRole("button", { name: "Start learning" }).click();
 
   await expect(page).toHaveURL(/\/dashboard$/);
