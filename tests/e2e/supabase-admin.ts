@@ -38,3 +38,31 @@ export async function deleteE2EUser() {
   const existing = await findE2EUser(client);
   if (existing) await client.auth.admin.deleteUser(existing.id);
 }
+
+/** Inserts a task for the e2e learner on their current local day. */
+export async function addE2EAssignment(task: {
+  title: string;
+  kind: "rewrite" | "interview_answer" | "follow_up";
+  instructions?: string;
+}) {
+  const client = admin();
+  const user = await findE2EUser(client);
+  if (!user) throw new Error("E2E user missing.");
+  const { data: profile } = await client
+    .from("profiles")
+    .select("timezone")
+    .eq("user_id", user.id)
+    .single();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: profile?.timezone ?? "Europe/Istanbul",
+  }).format(new Date());
+  const { error } = await client.from("assignments").insert({
+    user_id: user.id,
+    title: task.title,
+    instructions: task.instructions ?? "Answer in 3 sentences.",
+    kind: task.kind,
+    estimated_minutes: 5,
+    scheduled_for: today,
+  });
+  if (error) throw error;
+}

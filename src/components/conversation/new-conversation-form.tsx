@@ -1,31 +1,26 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { postJson } from "@/lib/api/client";
+import { SESSION_MINUTES, type SessionMinutes } from "@/lib/sessions/durations";
 import { Button } from "@/components/ui/button";
+import { ChoiceGroup, type ChoiceOption } from "@/components/choice-group";
 import { Card, CardContent } from "@/components/ui/card";
-
-type ChoiceOption<T extends string> = {
-  value: T;
-  label: string;
-  hint?: string;
-};
 
 const conversationTypes: ChoiceOption<"free" | "scenario">[] = [
   { value: "free", label: "Free chat", hint: "Talk about your interests" },
   { value: "scenario", label: "Scenario", hint: "Roleplay with a goal" },
 ];
 
-const durations: ChoiceOption<"5" | "15" | "25" | "30">[] = [
-  { value: "5", label: "5 min" },
-  { value: "15", label: "15 min" },
-  { value: "25", label: "25 min" },
-  { value: "30", label: "30 min" },
-];
+type Minutes = `${SessionMinutes}`;
+
+const durations: ChoiceOption<Minutes>[] = SESSION_MINUTES.map((m) => ({
+  value: `${m}` as Minutes,
+  label: `${m} min`,
+}));
 
 const feedbackLabels: Record<string, string> = {
   end: "at the end of the session",
@@ -38,19 +33,20 @@ export function NewConversationForm({
   defaultMinutes,
   feedbackMode,
   initialScenario,
+  assignmentId,
 }: {
   scenarios: { slug: string; title: string }[];
   defaultMinutes: number;
   feedbackMode: string;
   initialScenario: string | null;
+  /** Set when this conversation fulfils an assignment. */
+  assignmentId: string | null;
 }) {
   const router = useRouter();
   const [type, setType] = useState<"free" | "scenario">(
     initialScenario ? "scenario" : "free",
   );
-  const [duration, setDuration] = useState(
-    String(defaultMinutes) as "5" | "15" | "25" | "30",
-  );
+  const [duration, setDuration] = useState(String(defaultMinutes) as Minutes);
   const [scenario, setScenario] = useState(
     initialScenario ?? scenarios[0]?.slug ?? "",
   );
@@ -64,6 +60,7 @@ export function NewConversationForm({
       mode: "text",
       scenarioId: type === "scenario" ? scenario : null,
       durationGoalMinutes: Number(duration),
+      assignmentId,
     });
     if (result.ok) {
       router.push(`/conversation/${result.data.sessionId}`);
@@ -123,6 +120,13 @@ export function NewConversationForm({
           </Link>
         </p>
 
+        {assignmentId && (
+          <p className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm">
+            Bu konuşma bugünkü görevini tamamlar (en az bir cevap yazman
+            yeterli).
+          </p>
+        )}
+
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}
@@ -149,66 +153,5 @@ export function NewConversationForm({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function ChoiceGroup<T extends string>({
-  legend,
-  name,
-  options,
-  value,
-  onChange,
-}: {
-  legend: ReactNode;
-  name: string;
-  options: ChoiceOption<T>[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <fieldset>
-      <legend className="mb-2 text-sm font-medium">{legend}</legend>
-      <div
-        className={cn(
-          "grid gap-2",
-          options.length === 4 ? "grid-cols-4" : "sm:grid-cols-2",
-        )}
-      >
-        {options.map((option) => (
-          <label
-            key={option.value}
-            className={cn(
-              "flex min-h-12 cursor-pointer flex-col justify-center rounded-lg border px-3 py-2 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/60",
-              options.length === 4 && "items-center text-center",
-              option.value === value
-                ? "border-primary bg-primary/10"
-                : "hover:bg-secondary",
-            )}
-          >
-            <input
-              type="radio"
-              name={name}
-              value={option.value}
-              checked={option.value === value}
-              onChange={() => onChange(option.value)}
-              className="sr-only"
-            />
-            <span
-              className={cn(
-                "text-sm font-medium",
-                option.value === value && "text-primary",
-              )}
-            >
-              {option.label}
-            </span>
-            {option.hint && (
-              <span className="text-xs text-muted-foreground">
-                {option.hint}
-              </span>
-            )}
-          </label>
-        ))}
-      </div>
-    </fieldset>
   );
 }

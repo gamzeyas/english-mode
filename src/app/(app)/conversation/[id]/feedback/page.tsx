@@ -40,6 +40,11 @@ async function Feedback({
       title={session.scenario?.title ?? "Free conversation"}
       userTurns={session.messages.filter((m) => m.role === "user").length}
       initialState={state}
+      debrief={
+        session.scenario
+          ? { rubric: session.scenario.rubric, goals: session.scenario.goals }
+          : null
+      }
     />
   );
 }

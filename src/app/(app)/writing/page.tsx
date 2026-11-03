@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { PenLine } from "lucide-react";
+import { Suspense } from "react";
 import { PageContainer, PageHeader } from "@/components/layout/app-shell";
-import { ComingSoon } from "@/components/coming-soon";
+import { WritingCoach } from "@/components/writing/writing-coach";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/auth/dal";
+import { listWritingEntries } from "@/lib/writing/service";
 
 export const metadata: Metadata = { title: "Writing Coach" };
 
@@ -11,19 +14,17 @@ export default function WritingCoachPage() {
       <PageHeader
         eyebrow="Writing"
         title="Writing Coach"
-        description="Bir metin yapıştır, amacını ve tonunu seç; koç daha doğal bir versiyon ve kısa bir düzeltme alıştırması önersin."
+        description="Bir metin yapıştır, amacını ve tonunu seç; koç daha doğal bir versiyon, kısa açıklamalar ve senin yeniden yazacağın bir alıştırma önersin."
       />
-      <ComingSoon
-        icon={PenLine}
-        milestone="Milestone 4"
-        title="Writing Coach"
-        description="Paste a message, choose intent and register, and get a clearer version plus a short revision exercise."
-        bullets={[
-          "Original text, intent and tone",
-          "Coach response with reasons in Turkish",
-          "Revision exercise saved to your pool",
-        ]}
-      />
+      <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
+        <Loader />
+      </Suspense>
     </PageContainer>
   );
+}
+
+async function Loader() {
+  const user = await getCurrentUser();
+  const entries = await listWritingEntries(user);
+  return <WritingCoach entries={entries} />;
 }

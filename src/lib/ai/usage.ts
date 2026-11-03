@@ -7,7 +7,13 @@ export async function recordUsage(entry: {
   userId: string;
   sessionId: string | null;
   model: string;
-  operation: "coach_reply" | "feedback_analysis" | "review_evaluation";
+  operation:
+    | "coach_reply"
+    | "feedback_analysis"
+    | "review_evaluation"
+    | "task_feedback"
+    | "writing_coach"
+    | "assessment";
   usage: TokenUsage;
 }) {
   const admin = createAdminClient();

@@ -21,8 +21,15 @@ import {
   buildLearnerContextPrompt,
   COACH_PROMPT_VERSION,
   type LearnerContext,
+  type ScenarioDifficulty,
 } from "@/lib/ai/prompts/coach";
 import { recordUsage } from "@/lib/ai/usage";
+import {
+  assignmentForSession,
+  completeFromSession,
+  createFollowUp,
+} from "@/lib/assignments/service";
+import { debriefScope, toScenario } from "@/lib/scenarios/map";
 import { SessionError } from "@/lib/sessions/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -42,6 +49,8 @@ export type SessionMetadata = {
   context: LearnerContext;
   context_prompt: string;
   duration_goal_minutes: number | null;
+  /** Assignment this session fulfils; completed when the session ends. */
+  assignment_id?: string | null;
   analysis?: {
     status: "running" | "done" | "failed";
     started_at: string;
@@ -79,6 +88,7 @@ async function buildLearnerContext(
   profile: Profile,
   scenario: Tables<"scenarios"> | null,
   durationGoalMinutes: number | null,
+  difficulty: ScenarioDifficulty | null,
 ): Promise<LearnerContext> {
   const [patterns, due, summaries] = await Promise.all([
     supabase
@@ -131,6 +141,7 @@ async function buildLearnerContext(
           title: scenario.title,
           summary: scenario.summary,
           persona: {
+            key: persona.key,
             name: persona.name ?? "Partner",
             role: persona.role ?? "",
             style: persona.style ?? "",
@@ -138,6 +149,7 @@ async function buildLearnerContext(
           goals: Array.isArray(scenario.goals)
             ? (scenario.goals as string[])
             : [],
+          difficulty: difficulty ?? (scenario.difficulty as ScenarioDifficulty),
         }
       : null,
   };
@@ -150,9 +162,17 @@ async function buildLearnerContext(
 export async function createSession(
   user: CurrentUser,
   profile: Profile,
-  input: { scenarioSlug: string | null; durationGoalMinutes: number | null },
+  input: {
+    scenarioSlug: string | null;
+    durationGoalMinutes: number | null;
+    difficulty?: ScenarioDifficulty | null;
+    assignmentId?: string | null;
+  },
 ): Promise<string> {
   const supabase = await createClient();
+  const assignmentId = input.assignmentId
+    ? await assignmentForSession(supabase, input.assignmentId)
+    : null;
 
   let scenario: Tables<"scenarios"> | null = null;
   if (input.scenarioSlug) {
@@ -171,12 +191,14 @@ export async function createSession(
     profile,
     scenario,
     input.durationGoalMinutes,
+    input.difficulty ?? null,
   );
   const metadata: SessionMetadata = {
     prompt_version: COACH_PROMPT_VERSION,
     context,
     context_prompt: buildLearnerContextPrompt(context),
     duration_goal_minutes: input.durationGoalMinutes,
+    assignment_id: assignmentId,
   };
 
   const { data, error } = await supabase
@@ -230,7 +252,7 @@ export async function getSessionView(sessionId: string) {
     session.scenario_id
       ? supabase
           .from("scenarios")
-          .select("title, persona")
+          .select("*")
           .eq("id", session.scenario_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -243,12 +265,18 @@ export async function getSessionView(sessionId: string) {
     endedAt: session.ended_at,
     durationGoalMinutes: metadata.duration_goal_minutes ?? null,
     scenario: scenario.data
-      ? {
-          title: scenario.data.title,
-          personaName:
-            (scenario.data.persona as Record<string, string>).name ?? null,
-        }
+      ? (() => {
+          const mapped = toScenario(scenario.data);
+          return {
+            slug: mapped.slug,
+            title: mapped.title,
+            personaName: mapped.persona.name,
+            goals: mapped.goals,
+            rubric: mapped.rubric,
+          };
+        })()
       : null,
+    assignmentId: metadata.assignment_id ?? null,
     messages: messages
       .filter((m) => m.role !== "system_summary")
       .map((m) => ({
@@ -434,6 +462,19 @@ export async function endSession(user: CurrentUser, sessionId: string) {
       .eq("user_id", user.id);
     if (error) throw new Error("Session could not be ended.", { cause: error });
   }
+  // A linked assignment counts as done once the learner actually took part.
+  const assignmentId = (session.metadata as unknown as SessionMetadata)
+    .assignment_id;
+  if (assignmentId) {
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId)
+      .eq("role", "user");
+    if (count) {
+      await completeFromSession(supabase, user, assignmentId, sessionId);
+    }
+  }
   return { status: "completed" as const };
 }
 
@@ -581,7 +622,7 @@ export async function ensureFeedback(
       ? (
           await supabase
             .from("scenarios")
-            .select("title, rubric")
+            .select("title, rubric, goals")
             .eq("id", session.scenario_id)
             .maybeSingle()
         ).data
@@ -602,7 +643,11 @@ export async function ensureFeedback(
         targetExpressions: context.targetExpressions,
         previousWeakPatterns: context.weakPatterns.map((p) => p.pattern),
         scenario: scenario
-          ? { title: scenario.title, rubric: scenario.rubric }
+          ? {
+              title: scenario.title,
+              rubric: scenario.rubric,
+              goals: scenario.goals,
+            }
           : null,
       }),
     });
@@ -614,12 +659,31 @@ export async function ensureFeedback(
       usage: result.usage,
     });
 
-    const { payload, dropped } = validateFeedback(result.payload, messages);
+    const { payload, dropped } = validateFeedback(
+      result.payload,
+      messages,
+      scenario ? debriefScope(scenario) : null,
+    );
     if (dropped.corrections + dropped.strengths + dropped.candidates > 0) {
       console.info("[feedback] dropped unanchored findings", dropped);
     }
 
     await persistFeedback(supabase, user, sessionId, payload, messages);
+    try {
+      await createFollowUp(
+        supabase,
+        user,
+        profile,
+        sessionId,
+        payload.next_task,
+      );
+    } catch (followUpError) {
+      // The feedback itself is saved; a missing homework row is not fatal.
+      console.warn(
+        "[feedback] follow-up task not saved",
+        (followUpError as Error).name,
+      );
+    }
     await setAnalysis({
       status: "done",
       started_at: new Date().toISOString(),

@@ -2,9 +2,19 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Loader2, Plus, RotateCcw, Sparkles, X } from "lucide-react";
+import {
+  Check,
+  CircleDashed,
+  CircleDot,
+  Loader2,
+  Plus,
+  RotateCcw,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { getJson, postJson, type ApiResult } from "@/lib/api/client";
 import { CorrectionCard } from "@/components/conversation/correction-card";
+import { RatingBadge } from "@/components/rating-badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,6 +24,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { FeedbackCandidate, FeedbackState } from "@/lib/sessions/service";
+import type { RubricCriterion } from "@/types/domain";
+
+export type DebriefContext = { rubric: RubricCriterion[]; goals: string[] };
 
 const POLL_MS = 3000;
 
@@ -22,11 +35,13 @@ export function FeedbackView({
   title,
   userTurns,
   initialState,
+  debrief,
 }: {
   sessionId: string;
   title: string;
   userTurns: number;
   initialState: FeedbackState;
+  debrief: DebriefContext | null;
 }) {
   const [state, setState] = useState<FeedbackState>(initialState);
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -150,7 +165,7 @@ export function FeedbackView({
       )}
 
       {state.state === "ready" && (
-        <ReadyFeedback sessionId={sessionId} state={state} />
+        <ReadyFeedback sessionId={sessionId} state={state} debrief={debrief} />
       )}
 
       <div className="flex flex-col gap-2 border-t pt-6 sm:flex-row">
@@ -168,11 +183,16 @@ export function FeedbackView({
 function ReadyFeedback({
   sessionId,
   state,
+  debrief,
 }: {
   sessionId: string;
   state: Extract<FeedbackState, { state: "ready" }>;
+  debrief: DebriefContext | null;
 }) {
   const { payload } = state;
+  // Older feedback rows predate the scenario debrief fields.
+  const scores = payload.rubric_scores ?? [];
+  const goals = payload.goal_outcomes ?? [];
   return (
     <div className="space-y-6">
       <Card>
@@ -203,6 +223,10 @@ function ReadyFeedback({
           )}
         </CardContent>
       </Card>
+
+      {debrief && (scores.length > 0 || goals.length > 0) && (
+        <Debrief debrief={debrief} scores={scores} goals={goals} />
+      )}
 
       <section className="space-y-3" aria-labelledby="corrections-heading">
         <h2
@@ -361,6 +385,100 @@ function CandidateCard({
             >
               <X aria-hidden />
             </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Debrief({
+  debrief,
+  scores,
+  goals,
+}: {
+  debrief: DebriefContext;
+  scores: NonNullable<
+    Extract<FeedbackState, { state: "ready" }>["payload"]["rubric_scores"]
+  >;
+  goals: NonNullable<
+    Extract<FeedbackState, { state: "ready" }>["payload"]["goal_outcomes"]
+  >;
+}) {
+  const byKey = new Map(scores.map((score) => [score.key, score]));
+  const outcomeByGoal = new Map(goals.map((g) => [g.goal, g.status]));
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2>Scenario debrief</h2>
+        </CardTitle>
+        <CardDescription>
+          Gayriresmî pratik değerlendirmesi; her not konuşmandaki bir mesaja
+          dayanır.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <ul className="space-y-3">
+          {debrief.rubric.map((criterion) => {
+            const score = byKey.get(criterion.key);
+            const rating = score?.rating ?? "not_observed";
+            return (
+              <li key={criterion.key} className="space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{criterion.label}</span>
+                  <RatingBadge rating={rating} />
+                </div>
+                {score?.comment_tr && (
+                  <p lang="tr" className="text-sm text-muted-foreground">
+                    {score.comment_tr}
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        {debrief.goals.length > 0 && (
+          <div className="space-y-2 border-t pt-4">
+            <h3 className="text-sm font-medium">Goals</h3>
+            <ul className="space-y-2">
+              {debrief.goals.map((goal) => {
+                const status = outcomeByGoal.get(goal) ?? "not_yet";
+                return (
+                  <li key={goal} className="flex gap-2 text-sm">
+                    {status === "met" ? (
+                      <Check
+                        aria-hidden
+                        className="mt-0.5 size-4 shrink-0 text-success"
+                      />
+                    ) : status === "partly" ? (
+                      <CircleDot
+                        aria-hidden
+                        className="mt-0.5 size-4 shrink-0 text-primary"
+                      />
+                    ) : (
+                      <CircleDashed
+                        aria-hidden
+                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                      />
+                    )}
+                    <span>
+                      {goal}
+                      <span className="sr-only">
+                        {" "}
+                        —{" "}
+                        {status === "met"
+                          ? "met"
+                          : status === "partly"
+                            ? "partly met"
+                            : "not yet"}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
       </CardContent>

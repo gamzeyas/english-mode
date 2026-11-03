@@ -247,3 +247,141 @@ describe("constraints", () => {
     expect(count).toBe(0);
   });
 });
+
+describe("assignments, submissions, writing, assessments (Milestone 4)", () => {
+  let assignmentA: string;
+
+  beforeAll(async () => {
+    const { data, error } = await a.client
+      .from("assignments")
+      .insert({
+        user_id: a.id,
+        title: "Rewrite",
+        instructions: "Rewrite this.",
+        kind: "rewrite",
+        scheduled_for: "2026-11-03",
+        plan_key: "2026-11-03:recap",
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    assignmentA = data!.id;
+  });
+
+  it("A's assignments are invisible to B and B cannot create them for A", async () => {
+    const { data } = await b.client.from("assignments").select("id");
+    expect(data).toEqual([]);
+    const { error } = await b.client.from("assignments").insert({
+      user_id: a.id,
+      title: "x",
+      instructions: "x",
+      kind: "review",
+      scheduled_for: "2026-11-03",
+    });
+    expect(error?.code).toBe("42501");
+  });
+
+  it("B cannot link its assignment to A's session", async () => {
+    const { error } = await b.client.from("assignments").insert({
+      user_id: b.id,
+      title: "x",
+      instructions: "x",
+      kind: "follow_up",
+      scheduled_for: "2026-11-03",
+      source_session_id: sessionA,
+    });
+    expect(error?.code).toBe("23503");
+  });
+
+  it("plan keys make generated tasks idempotent", async () => {
+    const { error } = await a.client.from("assignments").insert({
+      user_id: a.id,
+      title: "dup",
+      instructions: "dup",
+      kind: "rewrite",
+      scheduled_for: "2026-11-03",
+      plan_key: "2026-11-03:recap",
+    });
+    expect(error?.code).toBe("23505");
+  });
+
+  it("B cannot submit to or skip A's assignment", async () => {
+    const submit = await b.client
+      .from("submissions")
+      .insert({ assignment_id: assignmentA, user_id: b.id, answer_text: "x" });
+    expect(submit.error?.code).toBe("23503");
+    const { data } = await b.client
+      .from("assignments")
+      .update({ status: "skipped" })
+      .eq("id", assignmentA)
+      .select();
+    expect(data).toEqual([]);
+  });
+
+  it("learners submit once and cannot forge feedback", async () => {
+    const forged = await a.client.from("submissions").insert({
+      assignment_id: assignmentA,
+      user_id: a.id,
+      answer_text: "x",
+      feedback: { summary_tr: "perfect" },
+    });
+    expect(forged.error?.code).toBe("42501");
+
+    const first = await a.client
+      .from("submissions")
+      .insert({ assignment_id: assignmentA, user_id: a.id, answer_text: "x" });
+    expect(first.error).toBeNull();
+    const second = await a.client
+      .from("submissions")
+      .insert({ assignment_id: assignmentA, user_id: a.id, answer_text: "y" });
+    expect(second.error?.code).toBe("23505");
+  });
+
+  it("writing entries and assessments are server-written", async () => {
+    const writing = await a.client.from("writing_entries").insert({
+      user_id: a.id,
+      source_text: "x",
+      intent: "x",
+      register: "neutral",
+      coach_version: "x",
+      response: {},
+    });
+    expect(writing.error?.code).toBe("42501");
+    const assessment = await a.client
+      .from("assessments")
+      .insert({ user_id: a.id, modality: "text" });
+    expect(assessment.error?.code).toBe("42501");
+  });
+
+  it("writing entries are private and deletable by their owner", async () => {
+    const { data: entry } = await admin
+      .from("writing_entries")
+      .insert({
+        user_id: a.id,
+        source_text: "Hello",
+        intent: "Greet",
+        register: "casual",
+        coach_version: "test",
+        response: {},
+      })
+      .select("id")
+      .single();
+    const { data: seenByB } = await b.client
+      .from("writing_entries")
+      .select("id");
+    expect(seenByB).toEqual([]);
+    await b.client.from("writing_entries").delete().eq("id", entry!.id);
+    const { data: stillThere } = await a.client
+      .from("writing_entries")
+      .select("id");
+    expect(stillThere).toEqual([{ id: entry!.id }]);
+    const { error } = await a.client
+      .from("writing_entries")
+      .update({ response: { forged: true } })
+      .eq("id", entry!.id);
+    expect(error?.code).toBe("42501");
+    await a.client.from("writing_entries").delete().eq("id", entry!.id);
+    const { data: gone } = await a.client.from("writing_entries").select("id");
+    expect(gone).toEqual([]);
+  });
+});

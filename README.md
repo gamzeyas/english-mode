@@ -4,10 +4,11 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 3 — learning intelligence.** Claude text coach with grounded feedback, an
-> editable learning pool, FSRS spaced-retrieval reviews with immutable logs, and progress
-> analytics. Scenario detail pages and the daily mission template still show labeled **demo**
-> content.
+> **Status: Milestone 4 — scenarios, assignments, writing.** Claude text coach with grounded
+> feedback, career/founder/client/social roleplays with an evidence-based rubric debrief, a
+> deterministic daily assignment planner (submit, skip, reschedule, swap), a writing coach with
+> revision exercises, a baseline + fortnightly matched written assessment, FSRS reviews and
+> progress analytics. No demo content remains.
 
 ## Stack
 
@@ -46,7 +47,8 @@ First e2e run needs a browser: `pnpm exec playwright install chromium`.
 
 PWA icons are generated from the SVGs in `public/manifest-assets/` with
 `node scripts/generate-icons.mjs`. The scenario seed migration is generated from
-`src/lib/demo/scenarios.ts` with `scripts/generate-scenario-seed.ts`.
+`src/lib/scenarios/catalog.ts` with `scripts/generate-scenario-seed.ts`; the app reads
+scenarios from the database.
 
 ## AI coach
 
@@ -57,7 +59,16 @@ PWA icons are generated from the SVGs in `public/manifest-assets/` with
   (`fallbacks: "default"`).
 - Analyzer: effort `medium`, structured output validated with Zod, then
   `validateFeedback()` drops any finding not anchored to a real learner message/quote and caps
-  corrections at 3.
+  corrections at 3. For roleplays it also rates each scenario rubric criterion
+  (`not_observed` / `developing` / `solid` / `strong`) and each goal; a positive rating without a
+  cited learner message is downgraded.
+- Writing coach, assignment feedback and the baseline assessor (`src/lib/ai/prompts/writing.ts`,
+  `assessment.ts`) share `runStructured()`; every correction must quote the learner's own text,
+  and assessment ratings need a quote from that answer. Levels are an informal, written-only
+  CEFR-like range, never an official result.
+- Daily plan: `src/lib/assignments/planner.ts` is pure and deterministic (PRD §12 default:
+  5 min retrieval + conversation/roleplay + 5 min recap; a 5-minute day is one task). Rows are
+  keyed by `plan_key`, so regeneration is idempotent; each analyzed session adds one follow-up.
 - Durability without a queue: `POST /api/sessions/:id/feedback` is idempotent; a stale lock
   (crashed request) is retried on the next call, failures can be retried by the learner.
 - Cost visibility: every call's estimated cost is logged in `ai_usage_logs` (no content). There is
@@ -99,7 +110,10 @@ src/lib/supabase/     server + proxy Supabase clients
 src/types/database.ts generated from the database (pnpm db:types)
 src/app/manifest.ts   PWA web app manifest
 src/components/       layout (app shell, bottom nav, side rail), dashboard, conversation, learning, ui (shadcn)
-src/lib/demo/         DEMO data (PRD §13 starter profile, scenario templates) — replaced in Milestone 1+
+src/lib/scenarios/    catalog (seed source), DB mapping and queries
+src/lib/assignments/  daily planner (pure) and assignment service
+src/lib/writing/      writing coach entries and revisions
+src/lib/assessment/   baseline task set, matched-task scheduling, assessor service
 src/lib/learning/     pool queries, mutations, progress stats
 src/lib/srs/          FSRS scheduler wrapper, recall prompts/matching
 src/lib/review/       due queue, reveal, grading, advisory AI check
@@ -115,20 +129,21 @@ tests/unit, tests/e2e
 | #   | Scope                                           | Status |
 | --- | ----------------------------------------------- | ------ |
 | 0   | Repo, design system, app shell, demo screens    | ✅     |
-| 1   | Supabase schema + RLS + tests, auth, onboarding | next   |
-| 2   | Text AI coach end-to-end, feedback analyzer     |        |
-| 3   | Learning pool, FSRS reviews                     |        |
-| 4   | Scenarios, assignments, writing coach           |        |
-| 5   | PWA hardening, deployment                       |        |
+| 1   | Supabase schema + RLS + tests, auth, onboarding | ✅     |
+| 2   | Text AI coach end-to-end, feedback analyzer     | ✅     |
+| 3   | Learning pool, FSRS reviews                     | ✅     |
+| 4   | Scenarios, assignments, writing coach, baseline | ✅     |
+| 5   | PWA hardening, deployment                       | next   |
 | 6   | Recorded voice + transcription                  |        |
 | 7   | Realtime voice, pronunciation lab               |        |
 | 8   | Adaptive planning, notifications                |        |
 
 ## Known limitations
 
-- Scenario detail pages and the daily mission template still render demo content (labeled on
-  screen). Coach replies are not streamed yet.
-- Baseline assessment (`/assessment`) is deferred to Milestone 4 (it needs the AI evaluator).
+- Coach replies are not streamed yet. Rate limiting arrives with Milestone 5 hardening.
+- The baseline is text-only; the optional voice recording part needs Milestone 6.
+- Review assignments are completed with "Mark done" once at least one card was graded that day;
+  conversation/roleplay assignments complete when the linked session ends with a learner reply.
 - Data export and account deletion arrive in Milestone 5; deleting the auth user already
   cascades every row.
 - The Supabase project runs in `us-east-1`.

@@ -1,6 +1,7 @@
 /**
- * DEMO scenario templates (PRD §5 F4, §6 personas). In Milestone 1 these move
- * to the `scenarios` table as seed rows; the shape already matches it.
+ * Scenario catalog source (PRD §5 F4, §6 personas). The app reads scenarios
+ * from the `scenarios` table; this file only feeds the seed migration
+ * (scripts/generate-scenario-seed.ts), so the two never drift apart.
  */
 import type { RubricCriterion, Scenario } from "@/types/domain";
 
@@ -32,9 +33,9 @@ const interviewRubric: RubricCriterion[] = [
   },
 ];
 
-export const demoScenarios: Scenario[] = [
+export const scenarioCatalog: Scenario[] = [
   {
-    id: "demo-scenario-recruiter",
+    id: "catalog-recruiter",
     slug: "ai-transformation-interview",
     title: "AI transformation lead — first interview",
     category: "career",
@@ -56,7 +57,7 @@ export const demoScenarios: Scenario[] = [
     durationOptions: [5, 10, 20],
   },
   {
-    id: "demo-scenario-investor",
+    id: "catalog-investor",
     slug: "founder-investor-pitch",
     title: "Pitch your startup to an angel investor",
     category: "founder",
@@ -95,7 +96,7 @@ export const demoScenarios: Scenario[] = [
     durationOptions: [5, 10],
   },
   {
-    id: "demo-scenario-client",
+    id: "catalog-client",
     slug: "client-project-briefing",
     title: "Client briefing with scope pushback",
     category: "client",
@@ -132,7 +133,7 @@ export const demoScenarios: Scenario[] = [
     durationOptions: [10, 20],
   },
   {
-    id: "demo-scenario-social",
+    id: "catalog-social",
     slug: "festival-small-talk",
     title: "Small talk at a techno festival",
     category: "social",
@@ -172,7 +173,3 @@ export const scenarioCategoryLabels: Record<Scenario["category"], string> = {
   client: "Client",
   social: "Social",
 };
-
-export function getDemoScenario(slug: string): Scenario | undefined {
-  return demoScenarios.find((scenario) => scenario.slug === slug);
-}

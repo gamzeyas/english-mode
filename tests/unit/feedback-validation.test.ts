@@ -45,6 +45,8 @@ function payload(overrides: Partial<FeedbackPayload> = {}): FeedbackPayload {
       estimated_minutes: 7,
     },
     confidence_notes: [],
+    rubric_scores: [],
+    goal_outcomes: [],
     ...overrides,
   };
 }
@@ -140,5 +142,86 @@ describe("validateFeedback", () => {
     ).payload;
     expect(result.learning_candidates).toHaveLength(1);
     expect(result.next_task.estimated_minutes).toBe(30);
+  });
+
+  it("keeps only evidence-backed debrief ratings for the scenario's rubric", () => {
+    const scope = {
+      rubricKeys: ["clarity", "turn_taking"],
+      goals: ["Use “I'm into…”", "Suggest meeting again"],
+    };
+    const { payload: result } = validateFeedback(
+      payload({
+        rubric_scores: [
+          {
+            key: "clarity",
+            rating: "solid",
+            evidence_message_id: "u2",
+            comment_tr: "Net.",
+          },
+          {
+            key: "turn_taking",
+            rating: "strong",
+            evidence_message_id: "a1",
+            comment_tr: "Koç mesajı kanıt değildir.",
+          },
+          {
+            key: "made_up",
+            rating: "strong",
+            evidence_message_id: "u1",
+            comment_tr: "Rubrikte yok.",
+          },
+          {
+            key: "clarity",
+            rating: "strong",
+            evidence_message_id: "u1",
+            comment_tr: "Tekrar.",
+          },
+        ],
+        goal_outcomes: [
+          {
+            goal: 'use "I\'m into..."',
+            status: "met",
+            evidence_message_id: "u1",
+          },
+          {
+            goal: "Suggest meeting again",
+            status: "met",
+            evidence_message_id: null,
+          },
+          { goal: "Invented goal", status: "met", evidence_message_id: "u1" },
+        ],
+      }),
+      transcript,
+      scope,
+    );
+    expect(result.rubric_scores.map((s) => [s.key, s.rating])).toEqual([
+      ["clarity", "solid"],
+      ["turn_taking", "not_observed"],
+    ]);
+    expect(result.goal_outcomes).toEqual([
+      { goal: "Use “I'm into…”", status: "met", evidence_message_id: "u1" },
+      {
+        goal: "Suggest meeting again",
+        status: "not_yet",
+        evidence_message_id: null,
+      },
+    ]);
+  });
+
+  it("drops debrief entries for free conversations", () => {
+    const { payload: result } = validateFeedback(
+      payload({
+        rubric_scores: [
+          {
+            key: "clarity",
+            rating: "solid",
+            evidence_message_id: "u1",
+            comment_tr: "…",
+          },
+        ],
+      }),
+      transcript,
+    );
+    expect(result.rubric_scores).toEqual([]);
   });
 });

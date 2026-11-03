@@ -11,6 +11,8 @@ export const createItemSchema = z.object({
   phrase: text(300).min(1),
   meaningTr: text(300).nullish(),
   example: text(500).nullish(),
+  /** Where the phrase came from, e.g. the writing coach. */
+  sourceContext: text(300).nullish(),
 });
 
 /** PATCH: content edits, approving a suggestion, archiving or restoring. */
@@ -44,7 +46,7 @@ export async function createItem(
       example: input.example || null,
       status: "new",
       due_at: new Date().toISOString(),
-      source_context: "Added manually",
+      source_context: input.sourceContext || "Added manually",
     })
     .select(SELECT)
     .single();

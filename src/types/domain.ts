@@ -83,7 +83,8 @@ export type Correction = {
   improved: string;
   reasonTr: string;
   category: CorrectionCategory;
-  severity: "low" | "medium" | "high";
+  /** Only session feedback ranks corrections by priority. */
+  severity?: "low" | "medium" | "high";
 };
 
 export type DailyMission = {

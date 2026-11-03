@@ -69,34 +69,43 @@ export type Database = {
       };
       assessments: {
         Row: {
+          assessor_version: string | null;
           created_at: string;
           estimated_level: string | null;
           evidence: NonNullable<Json>;
           id: string;
           is_official: boolean;
+          kind: string;
           modality: string;
           rubric: NonNullable<Json>;
+          task_set: string;
           user_id: string;
         };
         ComputedFields: never;
         Insert: {
+          assessor_version?: string | null;
           created_at?: string;
           estimated_level?: string | null;
           evidence?: NonNullable<Json>;
           id?: string;
           is_official?: boolean;
+          kind?: string;
           modality: string;
           rubric?: NonNullable<Json>;
+          task_set?: string;
           user_id: string;
         };
         Update: {
+          assessor_version?: string | null;
           created_at?: string;
           estimated_level?: string | null;
           evidence?: NonNullable<Json>;
           id?: string;
           is_official?: boolean;
+          kind?: string;
           modality?: string;
           rubric?: NonNullable<Json>;
+          task_set?: string;
           user_id?: string;
         };
         Relationships: [
@@ -117,6 +126,10 @@ export type Database = {
           id: string;
           instructions: string;
           kind: string;
+          payload: NonNullable<Json>;
+          plan_key: string | null;
+          scheduled_for: string;
+          source_session_id: string | null;
           status: string;
           title: string;
           updated_at: string;
@@ -130,6 +143,10 @@ export type Database = {
           id?: string;
           instructions: string;
           kind: string;
+          payload?: NonNullable<Json>;
+          plan_key?: string | null;
+          scheduled_for: string;
+          source_session_id?: string | null;
           status?: string;
           title: string;
           updated_at?: string;
@@ -142,12 +159,23 @@ export type Database = {
           id?: string;
           instructions?: string;
           kind?: string;
+          payload?: NonNullable<Json>;
+          plan_key?: string | null;
+          scheduled_for?: string;
+          source_session_id?: string | null;
           status?: string;
           title?: string;
           updated_at?: string;
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "assignments_source_session_fk";
+            columns: ["source_session_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "sessions";
+            referencedColumns: ["id", "user_id"];
+          },
           {
             foreignKeyName: "assignments_user_id_fkey";
             columns: ["user_id"];
@@ -781,6 +809,7 @@ export type Database = {
           feedback: Json | null;
           id: string;
           private_audio_path: string | null;
+          session_id: string | null;
           submitted_at: string;
           user_id: string;
         };
@@ -791,6 +820,7 @@ export type Database = {
           feedback?: Json | null;
           id?: string;
           private_audio_path?: string | null;
+          session_id?: string | null;
           submitted_at?: string;
           user_id: string;
         };
@@ -800,6 +830,7 @@ export type Database = {
           feedback?: Json | null;
           id?: string;
           private_audio_path?: string | null;
+          session_id?: string | null;
           submitted_at?: string;
           user_id?: string;
         };
@@ -810,6 +841,64 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "assignments";
             referencedColumns: ["id", "user_id"];
+          },
+          {
+            foreignKeyName: "submissions_session_fk";
+            columns: ["session_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "sessions";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
+      writing_entries: {
+        Row: {
+          coach_version: string;
+          created_at: string;
+          id: string;
+          intent: string;
+          register: string;
+          response: NonNullable<Json>;
+          revised_at: string | null;
+          revision_feedback: Json | null;
+          revision_text: string | null;
+          source_text: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          coach_version: string;
+          created_at?: string;
+          id?: string;
+          intent: string;
+          register: string;
+          response: NonNullable<Json>;
+          revised_at?: string | null;
+          revision_feedback?: Json | null;
+          revision_text?: string | null;
+          source_text: string;
+          user_id: string;
+        };
+        Update: {
+          coach_version?: string;
+          created_at?: string;
+          id?: string;
+          intent?: string;
+          register?: string;
+          response?: NonNullable<Json>;
+          revised_at?: string | null;
+          revision_feedback?: Json | null;
+          revision_text?: string | null;
+          source_text?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "writing_entries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["user_id"];
           },
         ];
       };

@@ -2,7 +2,7 @@
  * Versioned coach instruction (PRD §6). Bump COACH_PROMPT_VERSION whenever the
  * text changes; it is stored on every session for traceability.
  */
-export const COACH_PROMPT_VERSION = "coach-2026-11-02.1";
+export const COACH_PROMPT_VERSION = "coach-2026-11-03.1";
 
 export const COACH_SYSTEM_PROMPT = `You are English Mode, a friendly adaptive English conversation coach.
 Learner profile and context will be supplied as separate structured data.
@@ -40,9 +40,32 @@ export type LearnerContext = {
   scenario: {
     title: string;
     summary: string;
-    persona: { name: string; role: string; style: string };
+    persona: { key?: string; name: string; role: string; style: string };
     goals: string[];
+    difficulty?: ScenarioDifficulty;
   } | null;
+};
+
+export type ScenarioDifficulty = "easy" | "medium" | "hard" | "adaptive";
+
+/** PRD §6 personas: how each roleplay partner behaves. */
+const personaRules: Record<string, string> = {
+  professional_interviewer:
+    "Run a realistic interview: one question per turn, and when an answer is vague ask for a concrete example (situation, action, result).",
+  founder_investor:
+    "Probe the value proposition, market, pricing and differentiation. Politely challenge vague or unsupported claims.",
+  client_stakeholder:
+    "Brief the project, then push for extra scope on the same budget and timeline. React realistically to pushback and agree on a next step if the learner proposes one.",
+  friendly_partner:
+    "Keep it casual and curious; share small personal reactions so it feels like a real chat.",
+};
+
+const difficultyRules: Record<ScenarioDifficulty, string> = {
+  easy: "Use simple vocabulary, short questions and a patient pace.",
+  medium: "Speak at a natural pace with occasional follow-up questions.",
+  hard: "Be fast and idiomatic, with challenging follow-ups and mild skepticism.",
+  adaptive:
+    "Start at a natural pace and adjust difficulty to how well the learner copes.",
 };
 
 const feedbackRules: Record<LearnerContext["feedbackMode"], string> = {
@@ -57,8 +80,16 @@ const feedbackRules: Record<LearnerContext["feedbackMode"], string> = {
  * on every turn, so the system prefix stays byte-identical (prompt caching).
  */
 export function buildLearnerContextPrompt(context: LearnerContext): string {
-  const role = context.scenario
-    ? `Roleplay: you are ${context.scenario.persona.name}, ${context.scenario.persona.role}. Style: ${context.scenario.persona.style} Stay in character; this is practice, not a credentialed assessment.`
+  const scenario = context.scenario;
+  const role = scenario
+    ? [
+        `Roleplay: you are ${scenario.persona.name}, ${scenario.persona.role}. Style: ${scenario.persona.style}`,
+        personaRules[scenario.persona.key ?? ""] ?? "",
+        `Difficulty: ${difficultyRules[scenario.difficulty ?? "adaptive"]}`,
+        "Stay in character. Create natural chances for the learner to reach the scenario goals, but never list or announce them. This is practice, not a credentialed assessment.",
+      ]
+        .filter(Boolean)
+        .join("\n")
     : "Role: friendly conversation partner for everyday chat around the learner's interests.";
 
   return `${role}

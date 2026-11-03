@@ -176,6 +176,19 @@ export function ChatSession({ session }: { session: SessionView }) {
         )}
       </div>
 
+      {session.scenario && session.scenario.goals.length > 0 && (
+        <details className="border-b px-4 py-2 text-sm">
+          <summary className="flex min-h-10 cursor-pointer items-center font-medium text-muted-foreground">
+            Your goals ({session.scenario.goals.length})
+          </summary>
+          <ul className="list-disc space-y-1 pt-1 pb-2 pl-5">
+            {session.scenario.goals.map((goal) => (
+              <li key={goal}>{goal}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       <div
         className="flex-1 px-4 py-6"
         role="log"

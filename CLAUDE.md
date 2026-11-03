@@ -4,8 +4,10 @@
 
 - `English_Mode_PRD_v1.md` is the source of truth. Implement one milestone at a time; stop and
   report after each (checks run, files changed, limitations) before starting the next.
-- Never present demo data or canned output as real. Demo content lives in `src/lib/demo/` and is
-  always rendered with a visible demo label.
+- Never present demo data or canned output as real. Any future demo content lives in
+  `src/lib/demo/` and is always rendered with a visible demo label.
+- AI-produced records (feedback, assessments, submission feedback, writing responses) are written
+  server-side with the secret key; learners can read but never write them.
 - Never expose provider secrets (Supabase service role, OpenAI, Azure) to client code. Read them
   only via `getServerEnv()` in server code.
 - Verify current vendor docs before integrating a provider; never claim an integration works

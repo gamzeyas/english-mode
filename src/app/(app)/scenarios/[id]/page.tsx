@@ -2,38 +2,46 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Play, UserRound } from "lucide-react";
+import { ArrowLeft, CheckCircle2, UserRound } from "lucide-react";
 import { PageContainer, PageHeader } from "@/components/layout/app-shell";
-import { DemoBanner } from "@/components/layout/demo-banner";
-import { DemoBadge } from "@/components/demo-badge";
+import { StartRoleplay } from "@/components/scenarios/start-roleplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { uuidParam } from "@/lib/api/handler";
+import { getCurrentUser, getProfile } from "@/lib/auth/dal";
+import { formatLocalDate } from "@/lib/learning/day";
 import {
-  demoScenarios,
-  getDemoScenario,
+  scenarioCatalog,
   scenarioCategoryLabels,
-} from "@/lib/demo/scenarios";
+} from "@/lib/scenarios/catalog";
+import { getScenario } from "@/lib/scenarios/queries";
+import { createClient } from "@/lib/supabase/server";
 
 // The route segment is the scenario slug (PRD route: /scenarios/[id]).
+// Catalog slugs are known at build time; the scenario itself is read from
+// the database at request time.
 export async function generateStaticParams() {
-  return demoScenarios.map((scenario) => ({ id: scenario.slug }));
+  return scenarioCatalog.map((scenario) => ({ id: scenario.slug }));
 }
 
 export async function generateMetadata({
   params,
 }: PageProps<"/scenarios/[id]">): Promise<Metadata> {
   const { id } = await params;
-  return { title: getDemoScenario(id)?.title ?? "Scenario" };
+  return {
+    title: scenarioCatalog.find((s) => s.slug === id)?.title ?? "Scenario",
+  };
 }
 
-// Unknown slugs are request-time params, so param access sits behind Suspense.
-export default function ScenarioPage({ params }: PageProps<"/scenarios/[id]">) {
+export default function ScenarioPage({
+  params,
+  searchParams,
+}: PageProps<"/scenarios/[id]">) {
   return (
     <PageContainer>
-      <DemoBanner milestone="Milestone 4" />
       <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
-        <ScenarioDetail params={params} />
+        <ScenarioDetail params={params} searchParams={searchParams} />
       </Suspense>
     </PageContainer>
   );
@@ -41,12 +49,18 @@ export default function ScenarioPage({ params }: PageProps<"/scenarios/[id]">) {
 
 async function ScenarioDetail({
   params,
+  searchParams,
 }: {
   params: PageProps<"/scenarios/[id]">["params"];
+  searchParams: PageProps<"/scenarios/[id]">["searchParams"];
 }) {
-  const { id } = await params;
-  const scenario = getDemoScenario(id);
+  const [{ id }, { assignment }] = await Promise.all([params, searchParams]);
+  const scenario = await getScenario(id);
   if (!scenario) notFound();
+  const assignmentId =
+    typeof assignment === "string" && uuidParam.safeParse(assignment).success
+      ? assignment
+      : null;
 
   return (
     <>
@@ -60,7 +74,6 @@ async function ScenarioDetail({
         eyebrow={`${scenarioCategoryLabels[scenario.category]} · ${scenario.difficulty}`}
         title={scenario.title}
         description={scenario.summary}
-        actions={<DemoBadge label="Demo template" />}
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -116,26 +129,58 @@ async function ScenarioDetail({
         </Card>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">Session length</p>
-            <p className="text-sm text-muted-foreground">
-              {scenario.durationOptions
-                .map((minutes) => `${minutes} min`)
-                .join(" · ")}
-            </p>
-          </div>
-          <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
-            <Button disabled size="lg" className="h-12 px-6 text-base">
-              <Play aria-hidden /> Start roleplay
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Roleplay sessions arrive in Milestone 4.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <StartRoleplay
+        slug={scenario.slug}
+        durationOptions={scenario.durationOptions}
+        defaultDifficulty={scenario.difficulty}
+        assignmentId={assignmentId}
+      />
+
+      <Suspense fallback={<Skeleton className="h-24 w-full rounded-xl" />}>
+        <PastDebriefs scenarioId={scenario.id} />
+      </Suspense>
     </>
+  );
+}
+
+async function PastDebriefs({ scenarioId }: { scenarioId: string }) {
+  const [user, profile, supabase] = await Promise.all([
+    getCurrentUser(),
+    getProfile(),
+    createClient(),
+  ]);
+  const { data: sessions } = await supabase
+    .from("sessions")
+    .select("id, started_at")
+    .eq("user_id", user.id)
+    .eq("scenario_id", scenarioId)
+    .eq("status", "completed")
+    .order("started_at", { ascending: false })
+    .limit(5);
+  if (!sessions || sessions.length === 0) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <h2>Past debriefs</h2>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="divide-y">
+          {sessions.map((session) => (
+            <li key={session.id}>
+              <Link
+                href={`/conversation/${session.id}/feedback`}
+                className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm hover:text-primary"
+              >
+                {formatLocalDate(session.started_at, profile.timezone)}
+                <span className="text-primary">View debrief</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }

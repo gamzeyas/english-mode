@@ -40,3 +40,13 @@ export function startOfLocalDay(now: Date, timeZone: string): string {
   );
   return new Date(midnightWallAsUtc - offsetMs).toISOString();
 }
+
+/** Short date in the learner's time zone, e.g. "3 Nov 2026". */
+export function formatLocalDate(iso: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}

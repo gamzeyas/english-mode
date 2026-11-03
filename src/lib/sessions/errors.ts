@@ -8,7 +8,8 @@ export type SessionErrorCode =
   | "ai_refused"
   | "ai_failed"
   | "conflict"
-  | "duplicate";
+  | "duplicate"
+  | "not_ready";
 
 const STATUS: Record<SessionErrorCode, number> = {
   unauthorized: 401,
@@ -21,6 +22,7 @@ const STATUS: Record<SessionErrorCode, number> = {
   ai_failed: 502,
   conflict: 409,
   duplicate: 409,
+  not_ready: 409,
 };
 
 /** Learner-facing (Turkish) messages; never include provider details. */
@@ -36,12 +38,17 @@ export const SESSION_ERROR_MESSAGES: Record<SessionErrorCode, string> = {
   ai_failed: "Koça şu an ulaşılamıyor. Mesajın kaydedildi; tekrar dene.",
   conflict: "Bu kart başka bir sekmede güncellendi. Liste yenileniyor.",
   duplicate: "Bu ifade havuzunda zaten var.",
+  not_ready: "Bu adım henüz hazır değil.",
 };
 
 export class SessionError extends Error {
   readonly status: number;
-  constructor(readonly code: SessionErrorCode) {
-    super(SESSION_ERROR_MESSAGES[code]);
+  constructor(
+    readonly code: SessionErrorCode,
+    /** Optional learner-facing (Turkish) override of the default message. */
+    message?: string,
+  ) {
+    super(message ?? SESSION_ERROR_MESSAGES[code]);
     this.name = "SessionError";
     this.status = STATUS[code];
   }

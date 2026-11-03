@@ -1,12 +1,12 @@
-// Prints an idempotent SQL seed for the scenario catalog from src/lib/demo/scenarios.ts,
+// Prints an idempotent SQL seed for the scenario catalog from src/lib/scenarios/catalog.ts,
 // so the database and the UI templates share one source:
 //   node --experimental-strip-types scripts/generate-scenario-seed.ts > supabase/migrations/<ts>_seed_scenarios.sql
-import { demoScenarios } from "../src/lib/demo/scenarios.ts";
+import { scenarioCatalog } from "../src/lib/scenarios/catalog.ts";
 
 const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
 const json = (value: unknown) => `${q(JSON.stringify(value))}::jsonb`;
 
-const rows = demoScenarios.map((s) =>
+const rows = scenarioCatalog.map((s) =>
   [
     q(s.slug),
     q(s.title),

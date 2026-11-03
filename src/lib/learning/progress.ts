@@ -18,7 +18,17 @@ export async function getProgressStats(timeZone: string) {
   const since28 = new Date(now - 28 * DAY_MS).toISOString();
   const since7 = now - 7 * DAY_MS;
 
-  const [reviews, sessions, items, patterns] = await Promise.all([
+  const [
+    reviews,
+    sessions,
+    items,
+    patterns,
+    assignments,
+    words,
+    writing,
+    submissions,
+    assessments,
+  ] = await Promise.all([
     supabase
       .from("review_logs")
       .select("grade, reviewed_at")
@@ -26,7 +36,7 @@ export async function getProgressStats(timeZone: string) {
       .gte("reviewed_at", since28),
     supabase
       .from("sessions")
-      .select("started_at, status")
+      .select("started_at, status, scenario_id")
       .eq("user_id", user.id)
       .gte("started_at", since28),
     supabase.from("learning_items").select("status").eq("user_id", user.id),
@@ -38,6 +48,32 @@ export async function getProgressStats(timeZone: string) {
       .eq("user_id", user.id)
       .order("occurrence_count", { ascending: false })
       .limit(5),
+    supabase
+      .from("assignments")
+      .select("status")
+      .eq("user_id", user.id)
+      .gte("scheduled_for", since28.slice(0, 10)),
+    supabase
+      .from("messages")
+      .select("content")
+      .eq("user_id", user.id)
+      .eq("role", "user")
+      .gte("created_at", since28),
+    supabase
+      .from("writing_entries")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .gte("created_at", since28),
+    supabase
+      .from("submissions")
+      .select("submitted_at")
+      .eq("user_id", user.id)
+      .gte("submitted_at", since28),
+    supabase
+      .from("assessments")
+      .select("kind, created_at, estimated_level")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false }),
   ]);
 
   const reviewRows = reviews.data ?? [];
@@ -51,18 +87,41 @@ export async function getProgressStats(timeZone: string) {
       [
         ...sessionRows.map((s) => s.started_at),
         ...reviewRows.map((r) => r.reviewed_at),
+        ...(writing.data ?? []).map((w) => w.created_at),
+        ...(submissions.data ?? []).map((s) => s.submitted_at),
       ]
         .filter((iso) => Date.parse(iso) >= fromMs)
         .map((iso) => localDayKey(iso, timeZone)),
     ).size;
 
   const successful = reviewRows.filter((r) => r.grade >= 3).length;
+  const assignmentRows = assignments.data ?? [];
+  const utterances = words.data ?? [];
 
   return {
     activeDays7: activeDays(since7),
     activeDays28: activeDays(now - 28 * DAY_MS),
     sessionsCompleted28: sessionRows.filter((s) => s.status === "completed")
       .length,
+    roleplays28: sessionRows.filter(
+      (s) => s.status === "completed" && s.scenario_id !== null,
+    ).length,
+    learnerUtterances28: utterances.length,
+    learnerWords28: utterances.reduce(
+      (sum, m) => sum + m.content.trim().split(/\s+/).filter(Boolean).length,
+      0,
+    ),
+    assignmentsCompleted28: assignmentRows.filter(
+      (a) => a.status === "completed",
+    ).length,
+    assignmentsSkipped28: assignmentRows.filter((a) => a.status === "skipped")
+      .length,
+    writingEntries28: (writing.data ?? []).length,
+    assessments: (assessments.data ?? []).map((a) => ({
+      kind: a.kind,
+      createdAt: a.created_at,
+      estimatedLevel: a.estimated_level,
+    })),
     reviews7: reviewRows.filter((r) => Date.parse(r.reviewed_at) >= since7)
       .length,
     reviews28: reviewRows.length,

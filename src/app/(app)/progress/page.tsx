@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { PageContainer, PageHeader } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProfile } from "@/lib/auth/dal";
+import { formatLocalDate } from "@/lib/learning/day";
 import { getProgressStats, MIN_SAMPLE } from "@/lib/learning/progress";
 
 export const metadata: Metadata = { title: "Progress" };
@@ -63,12 +66,76 @@ async function Stats() {
           }
         />
       </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric
+          label="Your words (28d)"
+          value={String(stats.learnerWords28)}
+          hint={`${stats.learnerUtterances28} messages in conversations`}
+        />
+        <Metric
+          label="Roleplays (28d)"
+          value={String(stats.roleplays28)}
+          hint="Completed scenario sessions"
+        />
+        <Metric
+          label="Assignments (28d)"
+          value={String(stats.assignmentsCompleted28)}
+          hint={`${stats.assignmentsSkipped28} skipped — that's fine`}
+        />
+        <Metric
+          label="Writing coach (28d)"
+          value={String(stats.writingEntries28)}
+          hint="Texts reviewed"
+        />
+      </div>
+
       {smallSample && stats.reviews28 > 0 && (
         <p className="text-xs text-muted-foreground">
           Not: Son 28 günde {stats.reviews28} tekrar var; oranlar {MIN_SAMPLE}+
           tekrardan sonra daha anlamlı olur.
         </p>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2>Baseline & matched tasks</h2>
+          </CardTitle>
+          <CardDescription>
+            Aynı görevler, aynı ölçütler; yüzde artış iddiası yok. Karşılaştırma
+            için cevaplarını yan yana oku.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {stats.assessments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No baseline yet.</p>
+          ) : (
+            <ul className="divide-y text-sm">
+              {stats.assessments.map((assessment) => (
+                <li
+                  key={assessment.createdAt}
+                  className="flex items-center justify-between gap-3 py-2"
+                >
+                  <span>
+                    {assessment.kind === "baseline" ? "Baseline" : "Matched"} ·{" "}
+                    {formatLocalDate(assessment.createdAt, profile.timezone)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {assessment.estimatedLevel}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Button asChild variant="outline" className="h-11">
+            <Link href="/assessment">
+              {stats.assessments.length === 0
+                ? "Start baseline"
+                : "Open results"}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

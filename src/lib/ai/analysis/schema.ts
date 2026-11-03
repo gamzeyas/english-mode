@@ -1,9 +1,19 @@
 import { z } from "zod";
 import { normalizePhrase } from "@/lib/text/normalize";
 
+/** Rubric bands: deliberately coarse, informal and evidence-backed (PRD §11). */
+export const RUBRIC_RATINGS = [
+  "not_observed",
+  "developing",
+  "solid",
+  "strong",
+] as const;
+export type RubricRating = (typeof RUBRIC_RATINGS)[number];
+
 /**
- * Feedback analyzer output (PRD §6). `pattern_key` on corrections is an
- * addition: a short snake_case label used to track recurring error patterns.
+ * Feedback analyzer output (PRD §6). Additions to the PRD shape:
+ * `pattern_key` on corrections (tracks recurring error patterns), and the
+ * scenario debrief (`rubric_scores`, `goal_outcomes`), empty for free chat.
  */
 export const feedbackSchema = z.object({
   summary_tr: z.string(),
@@ -36,6 +46,21 @@ export const feedbackSchema = z.object({
     estimated_minutes: z.number(),
   }),
   confidence_notes: z.array(z.string()),
+  rubric_scores: z.array(
+    z.object({
+      key: z.string(),
+      rating: z.enum(RUBRIC_RATINGS),
+      evidence_message_id: z.string().nullable(),
+      comment_tr: z.string(),
+    }),
+  ),
+  goal_outcomes: z.array(
+    z.object({
+      goal: z.string(),
+      status: z.enum(["met", "partly", "not_yet"]),
+      evidence_message_id: z.string().nullable(),
+    }),
+  ),
 });
 
 export type FeedbackPayload = z.infer<typeof feedbackSchema>;
@@ -46,8 +71,11 @@ export const MAX_CANDIDATES = 5;
 
 type TranscriptMessage = { id: string; role: string; content: string };
 
+/** Scenario context the debrief is checked against. */
+export type DebriefScope = { rubricKeys: string[]; goals: string[] };
+
 /** Case/quote/whitespace-insensitive containment for evidence quotes. */
-function containsQuote(source: string, quote: string): boolean {
+export function containsQuote(source: string, quote: string): boolean {
   const needle = normalizePhrase(quote);
   return needle.length > 0 && normalizePhrase(source).includes(needle);
 }
@@ -73,6 +101,7 @@ export type ValidationReport = {
 export function validateFeedback(
   raw: FeedbackPayload,
   transcript: TranscriptMessage[],
+  scope: DebriefScope | null = null,
 ): ValidationReport {
   const learnerMessages = new Map(
     transcript.filter((m) => m.role === "user").map((m) => [m.id, m.content]),
@@ -110,9 +139,47 @@ export function validateFeedback(
     .sort((a, b) => severityRank[a.severity] - severityRank[b.severity])
     .slice(0, MAX_CORRECTIONS);
 
+  // Debrief: only the scenario's own criteria and goals, and a positive
+  // rating or outcome needs a real learner message as evidence.
+  const anchored = (id: string | null) =>
+    id !== null && learnerMessages.has(id) ? id : null;
+  const rubricKeys = new Set(scope?.rubricKeys ?? []);
+  const ratedKeys = new Set<string>();
+  const rubricScores = (raw.rubric_scores ?? []).flatMap((score) => {
+    if (!rubricKeys.has(score.key) || ratedKeys.has(score.key)) return [];
+    ratedKeys.add(score.key);
+    const evidence = anchored(score.evidence_message_id);
+    return [
+      {
+        ...score,
+        evidence_message_id: evidence,
+        rating: evidence ? score.rating : ("not_observed" as const),
+      },
+    ];
+  });
+  const goalsByKey = new Map(
+    (scope?.goals ?? []).map((goal) => [normalizePhrase(goal), goal]),
+  );
+  const seenGoals = new Set<string>();
+  const goalOutcomes = (raw.goal_outcomes ?? []).flatMap((outcome) => {
+    const goal = goalsByKey.get(normalizePhrase(outcome.goal));
+    if (!goal || seenGoals.has(goal)) return [];
+    seenGoals.add(goal);
+    const evidence = anchored(outcome.evidence_message_id);
+    return [
+      {
+        goal,
+        evidence_message_id: evidence,
+        status: evidence ? outcome.status : ("not_yet" as const),
+      },
+    ];
+  });
+
   return {
     payload: {
       ...raw,
+      rubric_scores: rubricScores,
+      goal_outcomes: goalOutcomes,
       strengths: strengths.slice(0, MAX_STRENGTHS),
       corrections: topCorrections,
       learning_candidates: candidates.slice(0, MAX_CANDIDATES),

@@ -14,9 +14,11 @@ export function CorrectionCard({ correction }: { correction: Correction }) {
     <article className="space-y-3 rounded-xl border bg-background/60 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="secondary">{categoryLabels[correction.category]}</Badge>
-        <span className="text-xs text-muted-foreground">
-          Priority: {correction.severity}
-        </span>
+        {correction.severity && (
+          <span className="text-xs text-muted-foreground">
+            Priority: {correction.severity}
+          </span>
+        )}
       </div>
       <div className="space-y-1.5 text-sm">
         <p className="text-muted-foreground line-through decoration-destructive/60">
