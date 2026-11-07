@@ -109,3 +109,18 @@ export async function addE2ECoachMessage(sessionId: string, content: string) {
   });
   if (error) throw error;
 }
+
+/** Adds a pool phrase directly (stands in for a save made elsewhere). */
+export async function addE2EPoolPhrase(phrase: string) {
+  const client = admin();
+  const user = await findE2EUser(client);
+  if (!user) throw new Error("E2E user missing.");
+  const { error } = await client.from("learning_items").insert({
+    user_id: user.id,
+    phrase,
+    normalized_phrase: phrase.toLowerCase(),
+    meaning_tr: "test",
+    status: "new",
+  });
+  if (error) throw error;
+}

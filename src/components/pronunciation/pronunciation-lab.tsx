@@ -35,6 +35,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useServerState } from "@/lib/use-server-state";
 
 const MAX_SECONDS = 30;
 const MAX_CHARS = 200;
@@ -76,7 +77,7 @@ export function PronunciationLab({
   pool: PoolPhrase[];
   dialect: "en-US" | "en-GB";
 }) {
-  const [attempts, setAttempts] = useState(initialAttempts);
+  const [attempts, setAttempts] = useServerState(initialAttempts);
   const [tab, setTab] = useState<"sets" | "pool" | "custom">("sets");
   const [selection, setSelection] = useState<Selection | null>(null);
   const [custom, setCustom] = useState("");

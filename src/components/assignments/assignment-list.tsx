@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import type { AssignmentView } from "@/lib/assignments/service";
 import { AssignmentCard } from "@/components/assignments/assignment-card";
+import { useServerState } from "@/lib/use-server-state";
 
 /** A list whose cards can disappear (rescheduled) or be replaced (swapped). */
 export function AssignmentList({
@@ -12,7 +12,7 @@ export function AssignmentList({
   assignments: AssignmentView[];
   empty: string;
 }) {
-  const [items, setItems] = useState(assignments);
+  const [items, setItems] = useServerState(assignments);
 
   if (items.length === 0) {
     return <p className="text-sm text-muted-foreground">{empty}</p>;

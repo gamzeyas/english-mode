@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceInput } from "@/components/voice/voice-input";
+import { useServerState } from "@/lib/use-server-state";
 
 const MAX_ANSWER = 4000;
 
@@ -50,7 +51,7 @@ export function AssignmentCard({
   /** Called when the task moves (rescheduled) or is replaced (swapped). */
   onReplace?: (previousId: string, next: AssignmentView | null) => void;
 }) {
-  const [assignment, setAssignment] = useState(initial);
+  const [assignment, setAssignment] = useServerState(initial);
   const [answer, setAnswer] = useState("");
   const [pending, setPending] = useState<Action | null>(null);
   const [error, setError] = useState<string | null>(null);

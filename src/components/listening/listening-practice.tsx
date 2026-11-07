@@ -31,6 +31,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useServerState } from "@/lib/use-server-state";
 
 const kindLabels: Record<ListeningKind, string> = {
   dictation: "Dictation",
@@ -44,7 +45,7 @@ export function ListeningPractice({
 }: {
   exercises: ListeningExerciseView[];
 }) {
-  const [history, setHistory] = useState(exercises);
+  const [history, setHistory] = useServerState(exercises);
   const [current, setCurrent] = useState<ListeningExerciseView | null>(
     () => exercises.find((e) => !e.completedAt) ?? null,
   );

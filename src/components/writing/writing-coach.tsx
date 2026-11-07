@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useServerState } from "@/lib/use-server-state";
 
 const MAX_CHARS = 4000;
 
@@ -28,7 +29,7 @@ const registers: ChoiceOption<Register>[] = [
 ];
 
 export function WritingCoach({ entries }: { entries: WritingEntryView[] }) {
-  const [history, setHistory] = useState(entries);
+  const [history, setHistory] = useServerState(entries);
   const [sourceText, setSourceText] = useState("");
   const [intent, setIntent] = useState("");
   const [register, setRegister] = useState<Register>("professional");

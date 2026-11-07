@@ -13,6 +13,7 @@ import {
   type PoolFilter,
 } from "@/lib/learning/pool";
 import type { LearningItem } from "@/types/domain";
+import { useServerState } from "@/lib/use-server-state";
 
 export function LearningPool({
   items: initialItems,
@@ -21,7 +22,7 @@ export function LearningPool({
   items: LearningItem[];
   now: string;
 }) {
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useServerState(initialItems);
   const [filter, setFilter] = useState<PoolFilter>("all");
   const reference = new Date(now);
   const visible = filterPool(items, filter, reference);
