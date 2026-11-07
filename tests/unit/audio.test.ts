@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { activeSeconds, MIN_ACTIVE_SECONDS } from "@/lib/audio/recorder";
+import {
+  activeSeconds,
+  matchPreferredMic,
+  MIN_ACTIVE_SECONDS,
+} from "@/lib/audio/recorder";
 import { encodeWav, parseWav, TARGET_SAMPLE_RATE } from "@/lib/audio/wav";
 import {
   AZURE_STT_API_VERSION,
@@ -103,5 +107,31 @@ describe("activeSeconds", () => {
       (_, i) => Math.sin(i / 3) * 0.01,
     );
     expect(activeSeconds(quiet)).toBeGreaterThan(0.9);
+  });
+});
+
+describe("matchPreferredMic", () => {
+  const devices = [
+    { deviceId: "new-a", label: "iPhone Microphone" },
+    { deviceId: "new-b", label: "MacBook Pro Microphone (Built-in)" },
+  ];
+
+  it("matches by id, then by label when the browser re-salted ids", () => {
+    expect(matchPreferredMic(devices, { id: "new-b", label: "whatever" })).toBe(
+      "new-b",
+    );
+    expect(
+      matchPreferredMic(devices, {
+        id: "old-b",
+        label: "MacBook Pro Microphone (Built-in)",
+      }),
+    ).toBe("new-b");
+  });
+
+  it("returns null when the device is gone or nothing is stored", () => {
+    expect(matchPreferredMic(devices, { id: "x", label: "USB Mic" })).toBe(
+      null,
+    );
+    expect(matchPreferredMic(devices, null)).toBe(null);
   });
 });

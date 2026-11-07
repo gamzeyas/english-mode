@@ -67,3 +67,24 @@ test("the transcription API validates format and size", async ({ request }) => {
     expect(sample.status()).toBe(503);
   }
 });
+
+test("pick and test a microphone in Settings", async ({ page }) => {
+  await page.goto("/settings");
+  const card = page.locator("main").filter({ hasText: "Microphone" });
+  await card.getByRole("button", { name: "Test microphone" }).click();
+  // The fake device plays a tone, so the level check succeeds.
+  await expect(card.getByText("Sesin geliyor")).toBeVisible({
+    timeout: 10_000,
+  });
+  await card.getByRole("button", { name: "Stop test" }).click();
+  await expect(card.getByText("Bu mikrofon çalışıyor")).toBeVisible();
+
+  const select = card.getByLabel("Microphone", { exact: true });
+  const options = await select.locator("option").allTextContents();
+  expect(options.length).toBeGreaterThan(1);
+  await select.selectOption({ index: 1 });
+  await page.reload();
+  await expect(page.getByLabel("Microphone", { exact: true })).not.toHaveValue(
+    "",
+  );
+});

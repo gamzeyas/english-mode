@@ -8,6 +8,79 @@ export function pickRecorderMimeType(): string | undefined {
   );
 }
 
+const MIC_STORAGE_KEY = "english-mode:mic-device";
+
+/**
+ * The learner's chosen input. Browsers may default to an unexpected device
+ * (e.g. a Continuity iPhone mic), so Settings lets them pick one; it is a
+ * per-device convenience and lives only in this browser.
+ */
+export type PreferredMic = { id: string; label: string };
+
+export function getPreferredMic(): PreferredMic | null {
+  try {
+    const stored = JSON.parse(localStorage.getItem(MIC_STORAGE_KEY) ?? "null");
+    return typeof stored?.id === "string" && typeof stored?.label === "string"
+      ? stored
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setPreferredMic(mic: PreferredMic | null) {
+  try {
+    if (mic) localStorage.setItem(MIC_STORAGE_KEY, JSON.stringify(mic));
+    else localStorage.removeItem(MIC_STORAGE_KEY);
+  } catch {
+    // Storage blocked: the browser default stays in use.
+  }
+}
+
+/**
+ * Finds the remembered input among the current devices. Device ids can be
+ * re-salted by the browser (e.g. after clearing site data), so the label is
+ * the fallback match.
+ */
+export function matchPreferredMic(
+  devices: { deviceId: string; label: string }[],
+  preferred = getPreferredMic(),
+): string | null {
+  if (!preferred) return null;
+  return (
+    devices.find((d) => d.deviceId === preferred.id)?.deviceId ??
+    devices.find((d) => d.label && d.label === preferred.label)?.deviceId ??
+    null
+  );
+}
+
+/** Opens the preferred mic, falling back to the default if it is gone. */
+export async function openMicrophone(): Promise<MediaStream> {
+  const base = {
+    channelCount: 1,
+    echoCancellation: true,
+    noiseSuppression: true,
+  };
+  const preferred = getPreferredMic();
+  if (preferred) {
+    const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(
+      (d) => d.kind === "audioinput",
+    );
+    // Without permission yet, labels are empty: try the stored id as is.
+    const deviceId = matchPreferredMic(inputs, preferred) ?? preferred.id;
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: { ...base, deviceId: { exact: deviceId } },
+      });
+    } catch (error) {
+      const name = (error as DOMException)?.name;
+      if (name !== "OverconstrainedError" && name !== "NotFoundError")
+        throw error;
+    }
+  }
+  return navigator.mediaDevices.getUserMedia({ audio: base });
+}
+
 export function canRecordAudio(): boolean {
   return (
     typeof window !== "undefined" &&

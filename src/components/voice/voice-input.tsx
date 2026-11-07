@@ -8,6 +8,7 @@ import {
   canRecordAudio,
   pickRecorderMimeType,
   MIN_ACTIVE_SECONDS,
+  openMicrophone,
   toWav16k,
 } from "@/lib/audio/recorder";
 import { MAX_RECORDING_SECONDS } from "@/lib/audio/wav";
@@ -25,7 +26,7 @@ const formatTime = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
 const SILENT_MIC_MESSAGE =
-  "Mikrofondan ses gelmiyor. Tarayıcıda doğru mikrofonun seçili olduğunu kontrol et (adres çubuğundaki site ayarları → Mikrofon; iPhone mikrofonu seçiliyse Mac'in kendi mikrofonunu seç). Mac'te ayrıca Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon'da tarayıcıya izin ver.";
+  "Mikrofondan ses gelmiyor. Settings → Microphone'dan doğru mikrofonu seç (ör. iPhone yerine MacBook mikrofonu). Mac'te Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon'da tarayıcıya izin verildiğini de kontrol et.";
 
 function micErrorMessage(error: unknown): string {
   const name = (error as DOMException)?.name;
@@ -117,13 +118,7 @@ export function VoiceInput({
     }
     setPhase("starting");
     try {
-      stream.current = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-        },
-      });
+      stream.current = await openMicrophone();
     } catch (micError) {
       release();
       setPhase("idle");

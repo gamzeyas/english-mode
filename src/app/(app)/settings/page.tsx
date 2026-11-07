@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { InstallApp } from "@/components/pwa/install-app";
 import { DataControls } from "@/components/settings/data-controls";
+import { MicrophonePicker } from "@/components/settings/microphone-picker";
 import { signOut } from "@/lib/auth/actions";
 import { getActiveConsents, getCurrentUser, getProfile } from "@/lib/auth/dal";
 import { feedbackOptions, purposeOptions } from "@/lib/onboarding/schema";
@@ -92,6 +93,19 @@ async function SettingsContent() {
               value={active.has("voice_processing") ? "Granted" : "Not granted"}
             />
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Microphone</CardTitle>
+          <CardDescription>
+            Kayıtta konuşma algılanmıyorsa buradan doğru mikrofonu seç ve test
+            et.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MicrophonePicker />
         </CardContent>
       </Card>
 
