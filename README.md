@@ -4,7 +4,12 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 6 — voice recordings.** Record in chat, reviews and assignments; the
+> **Status: Milestone 7a — spoken coach and listening practice.** Coach turns can be read aloud
+> (Azure neural TTS, American or British voice, normal or slow); voice mode sends a recorded
+> turn as heard and plays the reply, and "Listen first" hides the text until revealed. The
+> Listening page offers Claude-generated dictation (word-level, server-side grading) and
+> two-voice dialogues with multiple-choice questions. TTS only speaks server-owned text.
+> Built on Milestone 6 — voice recordings: Record in chat, reviews and assignments; the
 > browser converts to 16 kHz mono WAV, Azure AI Speech fast transcription returns the text, and
 > the learner corrects it before sending (stored as `speech_transcript`). Raw audio is never
 > stored. Built on Milestone 5 — PWA hardening: Installable PWA with an offline page and
@@ -140,7 +145,8 @@ tests/unit, tests/e2e
 | 4   | Scenarios, assignments, writing coach, baseline | ✅     |
 | 5   | PWA hardening, deployment                       | ✅     |
 | 6   | Recorded voice + transcription                  | ✅     |
-| 7   | Realtime voice, pronunciation lab               |        |
+| 7a  | Spoken coach (TTS), voice mode, listening       | ✅     |
+| 7b  | Pronunciation lab (Azure assessment)            |        |
 | 8   | Adaptive planning, notifications                |        |
 
 ## Known limitations
@@ -155,11 +161,17 @@ tests/unit, tests/e2e
   `E2E_REAL_VOICE=1` runs the browser flow against Azure.
 - Voice requires the voice-processing consent at version `2026-11-v2` (names Azure as the
   subprocessor); older grants are asked again. Recordings are capped at 2 minutes.
+- Voice mode is turn-based (record → transcribe → Claude → TTS, a few seconds per turn), not a
+  realtime duplex call: Claude has no realtime voice API, so the PRD's OpenAI Realtime plan was
+  replaced to keep one coach. TTS is billed per character (`ai_usage_logs.characters`) and
+  counts toward the same burst limits. Settings → Microphone picks the recording input.
+- Listening exercises are not yet part of the daily assignment plan or progress charts.
 - The baseline assessment is still text-only.
 - Review assignments are completed with "Mark done" once at least one card was graded that day;
   conversation/roleplay assignments complete when the linked session ends with a learner reply.
 - Settings → "Your data": JSON export of every learner-owned row and typed-confirmation
-  account deletion (cascades through all tables; no audio objects exist yet).
+  account deletion (cascades through all tables, including listening exercises; no audio
+  objects are stored).
 - The Supabase project runs in `us-east-1`.
 - Unknown dynamic IDs render the not-found page; with partial prerendering the HTTP status may
   remain `200` once streaming has started (documented Next.js behavior, `noindex` is still set).

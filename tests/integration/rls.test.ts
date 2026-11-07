@@ -384,6 +384,49 @@ describe("assignments, submissions, writing, assessments (Milestone 4)", () => {
     const { data: gone } = await a.client.from("writing_entries").select("id");
     expect(gone).toEqual([]);
   });
+
+  it("listening exercises are private, server-written and server-graded", async () => {
+    const forged = await a.client.from("listening_exercises").insert({
+      user_id: a.id,
+      kind: "dictation",
+      content: {},
+      generator_version: "x",
+      dialect: "en-US",
+    });
+    expect(forged.error?.code).toBe("42501");
+
+    const { data: exercise } = await admin
+      .from("listening_exercises")
+      .insert({
+        user_id: a.id,
+        kind: "dictation",
+        content: { title: "T", sentences: [] },
+        generator_version: "test",
+        dialect: "en-US",
+      })
+      .select("id")
+      .single();
+    const { data: seenByB } = await b.client
+      .from("listening_exercises")
+      .select("id");
+    expect(seenByB).toEqual([]);
+    // Learners cannot write their own score.
+    const { error } = await a.client
+      .from("listening_exercises")
+      .update({ score: 1, completed_at: new Date().toISOString() })
+      .eq("id", exercise!.id);
+    expect(error?.code).toBe("42501");
+    await b.client.from("listening_exercises").delete().eq("id", exercise!.id);
+    const { data: stillThere } = await a.client
+      .from("listening_exercises")
+      .select("id");
+    expect(stillThere).toEqual([{ id: exercise!.id }]);
+    await a.client.from("listening_exercises").delete().eq("id", exercise!.id);
+    const { data: gone } = await a.client
+      .from("listening_exercises")
+      .select("id");
+    expect(gone).toEqual([]);
+  });
 });
 
 describe("account erasure (PRD §14)", () => {
@@ -421,6 +464,13 @@ describe("account erasure (PRD §14)", () => {
       coach_version: "test",
       response: {},
     });
+    await admin.from("listening_exercises").insert({
+      user_id: c.id,
+      kind: "comprehension",
+      content: {},
+      generator_version: "test",
+      dialect: "en-GB",
+    });
 
     await deleteTestUser(admin, c);
 
@@ -431,6 +481,7 @@ describe("account erasure (PRD §14)", () => {
       "learning_items",
       "assignments",
       "writing_entries",
+      "listening_exercises",
     ] as const) {
       const { count } = await admin
         .from(table)

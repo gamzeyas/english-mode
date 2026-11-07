@@ -8,13 +8,15 @@ if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 const PORT = Number(process.env.PORT ?? 3100);
 const signedIn = { storageState: STORAGE_STATE };
-// A fake microphone (tone) that is granted without a permission prompt.
+// A fake microphone, granted without a permission prompt, that "speaks" the
+// sample recording, so real-voice runs exercise the whole spoken loop.
 const fakeMic = {
   permissions: ["microphone"],
   launchOptions: {
     args: [
       "--use-fake-ui-for-media-stream",
       "--use-fake-device-for-media-stream",
+      "--use-file-for-fake-audio-capture=tests/fixtures/speech-sample.wav",
     ],
   },
 };

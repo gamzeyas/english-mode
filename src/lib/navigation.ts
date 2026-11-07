@@ -2,6 +2,7 @@ import {
   BarChart3,
   BookOpenText,
   Drama,
+  Headphones,
   Layers,
   MessageCircle,
   PenLine,
@@ -34,6 +35,7 @@ export const primaryNav: NavItem[] = [
 
 /** Overflow on mobile, listed below the primary items on desktop. */
 export const secondaryNav: NavItem[] = [
+  { href: "/listening", label: "Listening", icon: Headphones },
   { href: "/writing", label: "Writing", icon: PenLine },
   { href: "/assignments", label: "Assignments", icon: BookOpenText },
   { href: "/settings", label: "Settings", icon: Settings },

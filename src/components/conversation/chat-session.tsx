@@ -9,9 +9,21 @@ import {
 } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, RotateCcw, SendHorizontal, Square } from "lucide-react";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Headphones,
+  Loader2,
+  RotateCcw,
+  SendHorizontal,
+  Snail,
+  Square,
+  Volume2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { postJson } from "@/lib/api/client";
+import { useSpeechPlayer } from "@/lib/audio/use-speech-player";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceInput } from "@/components/voice/voice-input";
@@ -28,6 +40,26 @@ type FailedSend = {
 };
 
 const MAX_CHARS = 2000;
+const PREFS_KEY = "english-mode:chat-voice";
+
+type VoicePrefs = { voiceMode: boolean; hideText: boolean; slow: boolean };
+const DEFAULT_PREFS: VoicePrefs = {
+  voiceMode: false,
+  hideText: false,
+  slow: false,
+};
+
+/** Per-browser listening preferences; storage may be unavailable. */
+function loadPrefs(): VoicePrefs {
+  try {
+    return {
+      ...DEFAULT_PREFS,
+      ...JSON.parse(localStorage.getItem(PREFS_KEY) ?? "{}"),
+    };
+  } catch {
+    return DEFAULT_PREFS;
+  }
+}
 
 export function ChatSession({ session }: { session: SessionView }) {
   const router = useRouter();
@@ -40,10 +72,44 @@ export function ChatSession({ session }: { session: SessionView }) {
   const [ending, setEnding] = useState(false);
   const active = session.status === "active";
   const listEnd = useRef<HTMLDivElement>(null);
+  const player = useSpeechPlayer();
+  const [prefs, setPrefs] = useState<VoicePrefs>(DEFAULT_PREFS);
+  // Read inside async callbacks, which would otherwise see stale state.
+  const prefsRef = useRef(prefs);
+  const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     listEnd.current?.scrollIntoView({ block: "end" });
   }, [messages, sending]);
+
+  useEffect(() => {
+    const init = setTimeout(() => {
+      const stored = loadPrefs();
+      prefsRef.current = stored;
+      setPrefs(stored);
+    });
+    return () => clearTimeout(init);
+  }, []);
+
+  function updatePrefs(change: Partial<VoicePrefs>) {
+    const next = { ...prefsRef.current, ...change };
+    prefsRef.current = next;
+    setPrefs(next);
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify(next));
+    } catch {
+      // Not persisted; still applies to this page.
+    }
+  }
+
+  function speak(messageId: string) {
+    const rate = prefsRef.current.slow ? "slow" : "normal";
+    return player.play(
+      `${messageId}:${rate}`,
+      `/api/messages/${messageId}/speech`,
+      { rate },
+    );
+  }
 
   const userTurns = messages.filter(
     (m) => m.role === "user" && !m.pending,
@@ -77,6 +143,8 @@ export function ChatSession({ session }: { session: SessionView }) {
         result.data.message,
         result.data.assistantMessage,
       ]);
+      if (prefsRef.current.voiceMode)
+        void speak(result.data.assistantMessage.id);
       return;
     }
     // Keep the optimistic bubble; the retry reuses the same id (idempotent).
@@ -93,8 +161,16 @@ export function ChatSession({ session }: { session: SessionView }) {
 
   function send(event?: FormEvent) {
     event?.preventDefault();
-    const content = draft.trim();
-    if (!content || sending || failed || !active) return;
+    if (submit(draft.trim(), draftModality)) {
+      setDraft("");
+      setDraftModality("text");
+    }
+  }
+
+  /** Optimistically shows the learner's turn and delivers it. */
+  function submit(content: string, modality: Modality): boolean {
+    if (!content || sending || failed || !active) return false;
+    player.stop();
     const clientMessageId = crypto.randomUUID();
     setMessages((current) => [
       ...current,
@@ -106,10 +182,8 @@ export function ChatSession({ session }: { session: SessionView }) {
         pending: true,
       },
     ]);
-    setDraft("");
-    const modality = draftModality;
-    setDraftModality("text");
     void deliver(clientMessageId, content, modality);
+    return true;
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -122,6 +196,9 @@ export function ChatSession({ session }: { session: SessionView }) {
       send();
     }
   }
+
+  const isPlaying = (messageId: string) =>
+    player.playing?.startsWith(messageId) ?? false;
 
   async function endSession() {
     setEnding(true);
@@ -182,6 +259,33 @@ export function ChatSession({ session }: { session: SessionView }) {
         )}
       </div>
 
+      {active && (
+        <div
+          role="toolbar"
+          aria-label="Listening options"
+          className="flex flex-wrap gap-1 border-b px-2 py-1"
+        >
+          <ToggleButton
+            pressed={prefs.voiceMode}
+            onClick={() => updatePrefs({ voiceMode: !prefs.voiceMode })}
+            icon={<Headphones aria-hidden />}
+            label="Voice mode"
+          />
+          <ToggleButton
+            pressed={prefs.hideText}
+            onClick={() => updatePrefs({ hideText: !prefs.hideText })}
+            icon={<EyeOff aria-hidden />}
+            label="Listen first"
+          />
+          <ToggleButton
+            pressed={prefs.slow}
+            onClick={() => updatePrefs({ slow: !prefs.slow })}
+            icon={<Snail aria-hidden />}
+            label="Slow"
+          />
+        </div>
+      )}
+
       {session.scenario && session.scenario.goals.length > 0 && (
         <details className="border-b px-4 py-2 text-sm">
           <summary className="flex min-h-10 cursor-pointer items-center font-medium text-muted-foreground">
@@ -226,8 +330,53 @@ export function ChatSession({ session }: { session: SessionView }) {
                 <span className="sr-only">
                   {message.role === "user" ? "You: " : "Coach: "}
                 </span>
-                {message.content}
+                {message.role === "assistant" &&
+                prefs.hideText &&
+                !revealed.has(message.id) ? (
+                  <span className="text-muted-foreground italic">
+                    Önce dinle — metin gizli
+                  </span>
+                ) : (
+                  message.content
+                )}
               </div>
+              {message.role === "assistant" && !message.pending && (
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    className="h-9 px-2 text-xs text-muted-foreground"
+                    aria-label={
+                      isPlaying(message.id) ? "Stop audio" : "Play audio"
+                    }
+                    onClick={() =>
+                      isPlaying(message.id) ? player.stop() : speak(message.id)
+                    }
+                    disabled={!!player.loading}
+                  >
+                    {player.loading?.startsWith(message.id) ? (
+                      <Loader2 aria-hidden className="animate-spin" />
+                    ) : isPlaying(message.id) ? (
+                      <Square aria-hidden />
+                    ) : (
+                      <Volume2 aria-hidden />
+                    )}
+                    {isPlaying(message.id) ? "Stop" : "Listen"}
+                  </Button>
+                  {prefs.hideText && !revealed.has(message.id) && (
+                    <Button
+                      variant="ghost"
+                      className="h-9 px-2 text-xs text-muted-foreground"
+                      onClick={() =>
+                        setRevealed((current) =>
+                          new Set(current).add(message.id),
+                        )
+                      }
+                    >
+                      <Eye aria-hidden /> Show text
+                    </Button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
           {sending && (
@@ -245,6 +394,11 @@ export function ChatSession({ session }: { session: SessionView }) {
           )}
         </ol>
 
+        {player.error && (
+          <p role="alert" className="mt-4 text-sm text-destructive">
+            {player.error}
+          </p>
+        )}
         {failed && (
           <div
             role="alert"
@@ -301,7 +455,12 @@ export function ChatSession({ session }: { session: SessionView }) {
             disabled={sending || !!failed}
             statusPlacement="above"
             onTranscript={(text) => {
-              // The learner can correct the transcript before sending.
+              // Voice mode is a spoken exchange: send the turn as heard.
+              if (prefsRef.current.voiceMode && !draft.trim()) {
+                submit(text, "speech_transcript");
+                return;
+              }
+              // Otherwise the learner can correct the transcript first.
               setDraft((current) => (current ? `${current} ${text}` : text));
               setDraftModality("speech_transcript");
               composer.current?.focus();
@@ -340,5 +499,28 @@ export function ChatSession({ session }: { session: SessionView }) {
         </form>
       )}
     </div>
+  );
+}
+
+function ToggleButton({
+  pressed,
+  onClick,
+  icon,
+  label,
+}: {
+  pressed: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <Button
+      variant={pressed ? "secondary" : "ghost"}
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn("h-11 px-3 text-sm", !pressed && "text-muted-foreground")}
+    >
+      {icon} {label}
+    </Button>
   );
 }

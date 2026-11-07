@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { encodeWav } from "@/lib/audio/wav";
 import { transcribeWithAzure } from "@/lib/speech/azure";
+import { buildSsml, synthesizeWithAzure } from "@/lib/speech/tts";
 
 /**
  * Real Azure call with a synthetic recording (macOS `say`, 16 kHz mono WAV).
@@ -46,6 +47,37 @@ describe.skipIf(!key || !region)("Azure fast transcription (real)", () => {
       audio: new Blob([encodeWav(samples)], { type: "audio/wav" }),
       locale: "en-US",
     });
+    expect(result.text.toLowerCase()).toContain("creative agency");
+  });
+
+  it("speaks a two-voice dialogue that transcribes back", async () => {
+    const ssml = buildSsml(
+      [
+        { speaker: "a", text: "Where are you working these days?" },
+        { speaker: "b", text: "I work at a creative agency in Istanbul." },
+      ],
+      { dialect: "en-GB", rate: "slow" },
+    );
+    const audio = await synthesizeWithAzure({
+      key: key!,
+      region: region!,
+      ssml,
+    });
+    // MP3 frames start with an ID3 tag or a frame sync (0xFFE).
+    const head = new Uint8Array(audio.slice(0, 3));
+    const isMp3 =
+      String.fromCharCode(...head) === "ID3" ||
+      (head[0] === 0xff && (head[1] & 0xe0) === 0xe0);
+    expect(isMp3).toBe(true);
+
+    const result = await transcribeWithAzure({
+      key: key!,
+      region: region!,
+      endpoint: process.env.AZURE_SPEECH_ENDPOINT,
+      audio: new Blob([audio], { type: "audio/mpeg" }),
+      locale: "en-GB",
+    });
+    console.info("[azure] tts round trip:", result.text);
     expect(result.text.toLowerCase()).toContain("creative agency");
   });
 });

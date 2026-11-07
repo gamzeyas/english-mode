@@ -20,6 +20,7 @@ export const EXPORT_TABLES = [
   "assignments",
   "submissions",
   "writing_entries",
+  "listening_exercises",
   "audio_assets",
   "pronunciation_attempts",
   "notification_preferences",

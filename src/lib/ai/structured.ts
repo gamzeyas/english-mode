@@ -22,7 +22,7 @@ export async function runStructured<T extends z.ZodType>(input: {
   system: string;
   content: string;
   userId: string;
-  operation: "task_feedback" | "writing_coach" | "assessment";
+  operation: "task_feedback" | "writing_coach" | "assessment" | "listening";
   effort?: "low" | "medium";
   maxTokens?: number;
 }): Promise<z.infer<T>> {

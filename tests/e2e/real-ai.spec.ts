@@ -143,3 +143,68 @@ test.describe("Milestone 4 with real Claude", () => {
     ).toBeVisible();
   });
 });
+
+test("generate listening material with Claude and hear it", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop only");
+  await page.goto("/listening");
+
+  await page.getByRole("button", { name: "Start" }).first().click();
+  const sentences = page.getByLabel(/What you heard in sentence/);
+  await expect(sentences.first()).toBeVisible({ timeout: 90_000 });
+  expect(await sentences.count()).toBeGreaterThanOrEqual(3);
+  if (process.env.E2E_REAL_VOICE) {
+    await page
+      .getByRole("button", { name: "Play", exact: true })
+      .first()
+      .click();
+    await expect(page.getByRole("button", { name: "Stop Play" })).toBeVisible({
+      timeout: 20_000,
+    });
+  }
+  await sentences.first().fill("I think");
+  await page.getByRole("button", { name: "Check answers" }).click();
+  await expect(page.getByText(/^Score \d+%$/)).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole("button", { name: "Start" }).nth(1).click();
+  await expect(page.getByRole("group").filter({ hasText: /^1\./ })).toBeVisible(
+    {
+      timeout: 90_000,
+    },
+  );
+  if (process.env.E2E_REAL_VOICE) {
+    await page.getByRole("button", { name: "Play dialogue" }).click();
+    await expect(
+      page.getByRole("button", { name: "Stop Play dialogue" }),
+    ).toBeVisible({ timeout: 30_000 });
+  }
+});
+
+test("voice mode: speak, auto-send, and hear the coach reply", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop only");
+  test.skip(!process.env.E2E_REAL_VOICE, "needs E2E_REAL_VOICE=1 (Azure)");
+  await page.goto("/conversation/new");
+  await page.getByRole("button", { name: "Start conversation" }).click();
+  await expect(page).toHaveURL(/\/conversation\/[0-9a-f-]{36}$/);
+  const transcript = page.getByRole("log", { name: "Conversation transcript" });
+  await expect(transcript.locator("li")).toHaveCount(1, { timeout: 60_000 });
+
+  await page.getByRole("button", { name: "Voice mode" }).click();
+  // The fake mic plays tests/fixtures/speech-sample.wav.
+  await page.getByRole("button", { name: "Record voice" }).click();
+  await page.waitForTimeout(6_000);
+  await page.getByRole("button", { name: /Stop recording/ }).click();
+
+  // Sent as heard, without a manual send, then the reply is read aloud.
+  await expect(transcript.getByText(/creative agency/i)).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(transcript.locator("li")).toHaveCount(3, { timeout: 90_000 });
+  await expect(page.getByRole("button", { name: "Stop audio" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByLabel("Your message")).toHaveValue("");
+});

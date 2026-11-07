@@ -12,6 +12,7 @@ export type Database = {
       ai_usage_logs: {
         Row: {
           audio_seconds: number | null;
+          characters: number | null;
           created_at: string;
           estimated_cost_usd: number | null;
           id: string;
@@ -26,6 +27,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           audio_seconds?: number | null;
+          characters?: number | null;
           created_at?: string;
           estimated_cost_usd?: number | null;
           id?: string;
@@ -39,6 +41,7 @@ export type Database = {
         };
         Update: {
           audio_seconds?: number | null;
+          characters?: number | null;
           created_at?: string;
           estimated_cost_usd?: number | null;
           id?: string;
@@ -391,6 +394,57 @@ export type Database = {
           },
           {
             foreignKeyName: "learning_items_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["user_id"];
+          },
+        ];
+      };
+      listening_exercises: {
+        Row: {
+          answers: Json | null;
+          completed_at: string | null;
+          content: NonNullable<Json>;
+          created_at: string;
+          dialect: string;
+          generator_version: string;
+          id: string;
+          kind: string;
+          result: Json | null;
+          score: number | null;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          answers?: Json | null;
+          completed_at?: string | null;
+          content: NonNullable<Json>;
+          created_at?: string;
+          dialect: string;
+          generator_version: string;
+          id?: string;
+          kind: string;
+          result?: Json | null;
+          score?: number | null;
+          user_id: string;
+        };
+        Update: {
+          answers?: Json | null;
+          completed_at?: string | null;
+          content?: NonNullable<Json>;
+          created_at?: string;
+          dialect?: string;
+          generator_version?: string;
+          id?: string;
+          kind?: string;
+          result?: Json | null;
+          score?: number | null;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "listening_exercises_user_id_fkey";
             columns: ["user_id"];
             isOneToOne: false;
             referencedRelation: "profiles";

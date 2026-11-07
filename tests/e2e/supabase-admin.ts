@@ -66,3 +66,46 @@ export async function addE2EAssignment(task: {
   });
   if (error) throw error;
 }
+
+/** Inserts generated-looking listening material (no Claude call in tests). */
+export async function addE2EListeningExercise(
+  kind: "dictation" | "comprehension",
+  content: Record<string, unknown>,
+) {
+  const client = admin();
+  const user = await findE2EUser(client);
+  if (!user) throw new Error("E2E user missing.");
+  const { data, error } = await client
+    .from("listening_exercises")
+    .insert({
+      user_id: user.id,
+      kind,
+      content,
+      generator_version: "e2e",
+      dialect: "en-US",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+/** Adds a coach turn to a session (stands in for a Claude reply). */
+export async function addE2ECoachMessage(sessionId: string, content: string) {
+  const client = admin();
+  const user = await findE2EUser(client);
+  if (!user) throw new Error("E2E user missing.");
+  // With real AI the coach's opening turn already exists.
+  const { count } = await client
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("session_id", sessionId);
+  const { error } = await client.from("messages").insert({
+    session_id: sessionId,
+    user_id: user.id,
+    role: "assistant",
+    content,
+    sequence_number: count ?? 0,
+  });
+  if (error) throw error;
+}

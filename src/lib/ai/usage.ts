@@ -13,7 +13,8 @@ export async function recordUsage(entry: {
     | "review_evaluation"
     | "task_feedback"
     | "writing_coach"
-    | "assessment";
+    | "assessment"
+    | "listening";
   usage: TokenUsage;
 }) {
   const admin = createAdminClient();
@@ -32,6 +33,30 @@ export async function recordUsage(entry: {
   });
   // Logging must never break the learner's request.
   if (error) console.error("[ai-usage] insert failed", error.code);
+}
+
+/** Azure neural text-to-speech list price (USD per million characters). */
+const AZURE_TTS_USD_PER_MILLION_CHARS = 15;
+
+/** Text-to-speech usage: billed characters only, never the text. */
+export async function recordTtsUsage(entry: {
+  userId: string;
+  sessionId: string | null;
+  characters: number;
+}) {
+  const { error } = await createAdminClient()
+    .from("ai_usage_logs")
+    .insert({
+      user_id: entry.userId,
+      session_id: entry.sessionId,
+      provider: "azure",
+      model: "neural-tts",
+      operation: "speech_synthesis",
+      characters: entry.characters,
+      estimated_cost_usd:
+        (entry.characters / 1_000_000) * AZURE_TTS_USD_PER_MILLION_CHARS,
+    });
+  if (error) console.error("[ai-usage] tts insert failed", error.code);
 }
 
 /** Reported Azure fast-transcription list price (USD per audio hour). */
