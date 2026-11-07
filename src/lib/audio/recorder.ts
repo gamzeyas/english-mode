@@ -17,8 +17,23 @@ export function canRecordAudio(): boolean {
   );
 }
 
+/**
+ * Peak below ~-46 dBFS: the mic delivered (near) silence. Typical when the OS
+ * blocks the browser's microphone access or the wrong input device is
+ * selected — getUserMedia still succeeds but every sample is ~0.
+ */
+export const SILENCE_PEAK = 0.005;
+
+export function peakLevel(samples: Float32Array): number {
+  let peak = 0;
+  for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
+  return peak;
+}
+
 /** Decodes any recorded container and resamples to 16 kHz mono WAV. */
-export async function toWav16k(recording: Blob): Promise<Blob> {
+export async function toWav16k(
+  recording: Blob,
+): Promise<{ wav: Blob; peak: number }> {
   const context = new AudioContext();
   try {
     const decoded = await context.decodeAudioData(
@@ -34,10 +49,11 @@ export async function toWav16k(recording: Blob): Promise<Blob> {
     source.buffer = decoded;
     source.connect(offline.destination);
     source.start();
-    const rendered = await offline.startRendering();
-    return new Blob([encodeWav(rendered.getChannelData(0))], {
-      type: "audio/wav",
-    });
+    const samples = (await offline.startRendering()).getChannelData(0);
+    return {
+      wav: new Blob([encodeWav(samples)], { type: "audio/wav" }),
+      peak: peakLevel(samples),
+    };
   } finally {
     void context.close();
   }
