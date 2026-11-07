@@ -14,7 +14,8 @@ export type SessionErrorCode =
   | "consent_required"
   | "voice_not_configured"
   | "voice_failed"
-  | "no_speech";
+  | "no_speech"
+  | "push_not_configured";
 
 const STATUS: Record<SessionErrorCode, number> = {
   unauthorized: 401,
@@ -33,6 +34,7 @@ const STATUS: Record<SessionErrorCode, number> = {
   voice_not_configured: 503,
   voice_failed: 502,
   no_speech: 422,
+  push_not_configured: 503,
 };
 
 /** Learner-facing (Turkish) messages; never include provider details. */
@@ -57,6 +59,8 @@ export const SESSION_ERROR_MESSAGES: Record<SessionErrorCode, string> = {
   voice_failed: "Kayıt yazıya çevrilemedi. Tekrar dene ya da yazarak devam et.",
   no_speech:
     "Kayıtta konuşma algılanamadı. Mikrofona biraz daha yakın konuşup tekrar dene.",
+  push_not_configured:
+    "Bildirim servisi henüz yapılandırılmadı (bildirim anahtarları eksik).",
 };
 
 export class SessionError extends Error {

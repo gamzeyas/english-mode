@@ -4,7 +4,11 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 8a — adaptive plan and analytics.** A weekly focus ranks speaking,
+> **Status: Milestone 8 — adaptive learning and reminders.** Settings → Reminders sets a daily
+> reminder time and weekdays (with a suggestion from when you actually practise) and enables Web
+> Push per device after a tap-to-grant permission. A Supabase `pg_cron` job calls
+> `/api/cron/reminders` every 15 minutes with a shared secret; reminders fire once per local day,
+> are skipped if you already practised, and describe your real plan. Milestone 8a: A weekly focus ranks speaking,
 > listening, pronunciation, vocabulary and writing from measured signals (scores, recency,
 > backlog; unmeasured skills are labelled, not scored) and drives a 5-minute skill slot in the
 > daily plan (listening and pronunciation tasks auto-complete when practised). Progress shows
@@ -160,7 +164,7 @@ tests/unit, tests/e2e
 | 7a  | Spoken coach (TTS), voice mode, listening       | ✅     |
 | 7b  | Pronunciation lab, translations, hints          | ✅     |
 | 8a  | Weekly focus, skill tasks, analytics, cost view | ✅     |
-| 8b  | Reminders and push notifications                |        |
+| 8b  | Reminders and push notifications                | ✅     |
 
 ## Known limitations
 
@@ -193,6 +197,13 @@ tests/unit, tests/e2e
 - Settings → "Your data": JSON export of every learner-owned row and typed-confirmation
   account deletion (cascades through all tables, including listening exercises; no audio
   objects are stored).
+- Push reminders need `pnpm push:setup` once (VAPID keys + `CRON_SECRET` into Vercel and
+  `.env.local`, endpoint URL + secret into Supabase Vault for the `pg_cron` job), then a
+  redeploy. Without it Settings says notifications are not configured and the scheduler endpoint
+  answers 503. Delivery timing is ±15 minutes; a reminder more than 3 hours late is dropped.
+  iPhone/iPad only receive web push from the app added to the Home Screen (iOS 16.4+).
+  While pg_net sends a request the secret sits briefly in `net.http_request_queue`, readable
+  only by database roles.
 - The Supabase project runs in `us-east-1`.
 - Unknown dynamic IDs render the not-found page; with partial prerendering the HTTP status may
   remain `200` once streaming has started (documented Next.js behavior, `noindex` is still set).
@@ -200,5 +211,6 @@ tests/unit, tests/e2e
 ## Deployment
 
 Vercel project `english-mode` (team `bluechip2`). Production env vars: Supabase (Marketplace
-integration), `ANTHROPIC_API_KEY`, `ALLOWED_EMAILS`. Deploy with `vercel deploy --prod`; then
+integration), `ANTHROPIC_API_KEY`, `ALLOWED_EMAILS`, Azure Speech, and the push variables written by
+`pnpm push:setup`. Deploy with `vercel deploy --prod`; then
 sign in at the production URL with the account created by `pnpm user:create`.

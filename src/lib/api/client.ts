@@ -6,7 +6,7 @@ export type ApiResult<T> =
 const NETWORK_ERROR = "Bağlantı sorunu. İnternetini kontrol edip tekrar dene.";
 
 async function request<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   url: string,
   body?: unknown,
 ): Promise<ApiResult<T>> {
@@ -48,6 +48,8 @@ async function request<T>(
 export const postJson = <T>(url: string, body?: unknown) =>
   request<T>("POST", url, body ?? {});
 export const getJson = <T>(url: string) => request<T>("GET", url);
+export const putJson = <T>(url: string, body: unknown) =>
+  request<T>("PUT", url, body);
 export const patchJson = <T>(url: string, body: unknown) =>
   request<T>("PATCH", url, body);
 export const deleteJson = <T>(url: string, body?: unknown) =>

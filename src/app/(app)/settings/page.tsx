@@ -16,6 +16,8 @@ import { InstallApp } from "@/components/pwa/install-app";
 import { DataControls } from "@/components/settings/data-controls";
 import { getUsageSummary } from "@/lib/account/usage";
 import { MicrophonePicker } from "@/components/settings/microphone-picker";
+import { ReminderSettings } from "@/components/settings/reminder-settings";
+import { getReminderSettings } from "@/lib/notifications/service";
 import { signOut } from "@/lib/auth/actions";
 import { getActiveConsents, getCurrentUser, getProfile } from "@/lib/auth/dal";
 import { feedbackOptions, purposeOptions } from "@/lib/onboarding/schema";
@@ -43,7 +45,10 @@ async function SettingsContent() {
     getProfile(),
     getActiveConsents(),
   ]);
-  const usage = await getUsageSummary(user);
+  const [usage, reminders] = await Promise.all([
+    getUsageSummary(user),
+    getReminderSettings(user, profile),
+  ]);
   const active = new Set(consents.map((consent) => consent.consent_type));
   const purpose = purposeOptions.find(
     (o) => o.value === profile.purpose,
@@ -95,6 +100,19 @@ async function SettingsContent() {
               value={active.has("voice_processing") ? "Granted" : "Not granted"}
             />
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reminders</CardTitle>
+          <CardDescription>
+            Seçtiğin saatte günlük bir hatırlatma. O gün zaten çalıştıysan
+            gönderilmez.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ReminderSettings settings={reminders} />
         </CardContent>
       </Card>
 

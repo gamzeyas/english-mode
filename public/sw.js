@@ -5,6 +5,9 @@
 // - Cache-first for immutable build assets (/_next/static) and app icons.
 // - When a page navigation fails because the network is down, show the
 //   static offline page instead of the browser error.
+//
+// Push (Milestone 8b): shows the reminder the server sent and opens the app
+// on tap. Payloads are JSON {title, body, url} with a same-origin path.
 const VERSION = "v1";
 const STATIC_CACHE = `english-mode-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
@@ -68,4 +71,45 @@ self.addEventListener("fetch", (event) => {
       }),
     );
   }
+});
+
+self.addEventListener("push", (event) => {
+  let message = {};
+  try {
+    message = event.data ? event.data.json() : {};
+  } catch {
+    message = { body: event.data ? event.data.text() : "" };
+  }
+  const url =
+    typeof message.url === "string" && message.url.startsWith("/")
+      ? message.url
+      : "/dashboard";
+  event.waitUntil(
+    self.registration.showNotification(message.title || "English Mode", {
+      body: message.body || "",
+      icon: "/manifest-assets/icon-192.png",
+      badge: "/manifest-assets/icon-192.png",
+      tag: "english-mode-reminder",
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(
+    event.notification.data?.url || "/dashboard",
+    self.location.origin,
+  ).href;
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windows) => {
+        const open = windows.find((w) =>
+          w.url.startsWith(self.location.origin),
+        );
+        if (open) return open.navigate(url).then((w) => (w ?? open).focus());
+        return self.clients.openWindow(url);
+      }),
+  );
 });

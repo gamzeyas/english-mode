@@ -537,27 +537,33 @@ export type Database = {
         Row: {
           channels: string[];
           enabled: boolean;
+          last_reminded_on: string | null;
           reminder_time: string | null;
           timezone: string;
           updated_at: string;
           user_id: string;
+          weekdays: number[];
         };
         ComputedFields: never;
         Insert: {
           channels?: string[];
           enabled?: boolean;
+          last_reminded_on?: string | null;
           reminder_time?: string | null;
           timezone?: string;
           updated_at?: string;
           user_id: string;
+          weekdays?: number[];
         };
         Update: {
           channels?: string[];
           enabled?: boolean;
+          last_reminded_on?: string | null;
           reminder_time?: string | null;
           timezone?: string;
           updated_at?: string;
           user_id?: string;
+          weekdays?: number[];
         };
         Relationships: [
           {
@@ -688,6 +694,8 @@ export type Database = {
           endpoint: string;
           id: string;
           keys: NonNullable<Json>;
+          last_success_at: string | null;
+          user_agent: string | null;
           user_id: string;
         };
         ComputedFields: never;
@@ -696,6 +704,8 @@ export type Database = {
           endpoint: string;
           id?: string;
           keys: NonNullable<Json>;
+          last_success_at?: string | null;
+          user_agent?: string | null;
           user_id: string;
         };
         Update: {
@@ -703,6 +713,8 @@ export type Database = {
           endpoint?: string;
           id?: string;
           keys?: NonNullable<Json>;
+          last_success_at?: string | null;
+          user_agent?: string | null;
           user_id?: string;
         };
         Relationships: [
@@ -1029,6 +1041,10 @@ export type Database = {
           review_log_id: string;
           status: string;
         }[];
+      };
+      configure_reminder_trigger: {
+        Args: { p_secret: string; p_url: string };
+        Returns: undefined;
       };
     };
     Enums: {

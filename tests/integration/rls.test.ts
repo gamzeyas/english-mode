@@ -513,6 +513,83 @@ describe("assignments, submissions, writing, assessments (Milestone 4)", () => {
   });
 });
 
+describe("reminders and push (Milestone 8b)", () => {
+  it("learners own their reminder preferences, within limits", async () => {
+    const created = await a.client.from("notification_preferences").insert({
+      user_id: a.id,
+      enabled: true,
+      reminder_time: "20:00",
+      weekdays: [1, 3, 5],
+      channels: ["push"],
+    });
+    expect(created.error).toBeNull();
+    const forgedForA = await b.client
+      .from("notification_preferences")
+      .insert({ user_id: a.id, enabled: true });
+    expect(forgedForA.error).not.toBeNull();
+    const { data: seenByB } = await b.client
+      .from("notification_preferences")
+      .select("user_id")
+      .eq("user_id", a.id);
+    expect(seenByB).toEqual([]);
+
+    // The server's daily claim is not learner-writable.
+    const claim = await a.client
+      .from("notification_preferences")
+      .update({ last_reminded_on: "2026-11-08" })
+      .eq("user_id", a.id);
+    expect(claim.error?.code).toBe("42501");
+    const badDays = await a.client
+      .from("notification_preferences")
+      .update({ weekdays: [0, 8] })
+      .eq("user_id", a.id);
+    expect(badDays.error?.code).toBe("23514");
+    const badChannel = await a.client
+      .from("notification_preferences")
+      .update({ channels: ["sms"] })
+      .eq("user_id", a.id);
+    expect(badChannel.error?.code).toBe("23514");
+  });
+
+  it("push subscriptions are server-written, private and removable", async () => {
+    const forged = await a.client.from("push_subscriptions").insert({
+      user_id: a.id,
+      endpoint: "https://push.example.test/forged",
+      keys: {},
+    });
+    expect(forged.error?.code).toBe("42501");
+    const endpoint = `https://push.example.test/${a.id}`;
+    await admin
+      .from("push_subscriptions")
+      .insert({ user_id: a.id, endpoint, keys: { p256dh: "x", auth: "y" } });
+    await b.client.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    const { data: seenByB } = await b.client
+      .from("push_subscriptions")
+      .select("id");
+    expect(seenByB).toEqual([]);
+    const { data: seenByA } = await a.client
+      .from("push_subscriptions")
+      .select("endpoint");
+    expect(seenByA).toEqual([{ endpoint }]);
+    await a.client.from("push_subscriptions").delete().eq("endpoint", endpoint);
+    const { data: gone } = await a.client
+      .from("push_subscriptions")
+      .select("id");
+    expect(gone).toEqual([]);
+  });
+
+  it("only the server can configure the reminder scheduler", async () => {
+    const args = {
+      p_url: "https://attacker.example/steal",
+      p_secret: "x".repeat(40),
+    };
+    const asLearner = await a.client.rpc("configure_reminder_trigger", args);
+    expect(asLearner.error).not.toBeNull();
+    const asAnon = await anonClient().rpc("configure_reminder_trigger", args);
+    expect(asAnon.error).not.toBeNull();
+  });
+});
+
 describe("account erasure (PRD §14)", () => {
   it("deleting the auth user erases every learner-owned row", async () => {
     const c = await createTestUser(admin);
@@ -556,6 +633,15 @@ describe("account erasure (PRD §14)", () => {
       dialect: "en-GB",
     });
 
+    await c.client
+      .from("notification_preferences")
+      .insert({ user_id: c.id, enabled: true, reminder_time: "09:00" });
+    await admin.from("push_subscriptions").insert({
+      user_id: c.id,
+      endpoint: `https://push.example.test/${c.id}`,
+      keys: {},
+    });
+
     await deleteTestUser(admin, c);
 
     for (const table of [
@@ -566,6 +652,8 @@ describe("account erasure (PRD §14)", () => {
       "assignments",
       "writing_entries",
       "listening_exercises",
+      "notification_preferences",
+      "push_subscriptions",
     ] as const) {
       const { count } = await admin
         .from(table)

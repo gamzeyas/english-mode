@@ -31,6 +31,13 @@ export const serverEnvSchema = publicEnvSchema.extend({
   AZURE_SPEECH_REGION: z.string().min(1).optional(),
   /** Optional custom endpoint (https://<resource>.cognitiveservices.azure.com). */
   AZURE_SPEECH_ENDPOINT: z.url().optional(),
+  /** Web Push (VAPID) key pair; the public key is also sent to the browser. */
+  VAPID_PUBLIC_KEY: z.string().min(1).optional(),
+  VAPID_PRIVATE_KEY: optionalSecret,
+  /** Contact for push services: a mailto: or https: URL. */
+  VAPID_SUBJECT: z.string().min(1).optional(),
+  /** Bearer secret the scheduler sends to /api/cron/reminders. */
+  CRON_SECRET: z.string().min(32).optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
