@@ -7,7 +7,7 @@ import { postForm } from "@/lib/api/client";
 import {
   canRecordAudio,
   pickRecorderMimeType,
-  SILENCE_PEAK,
+  MIN_ACTIVE_SECONDS,
   toWav16k,
 } from "@/lib/audio/recorder";
 import { MAX_RECORDING_SECONDS } from "@/lib/audio/wav";
@@ -25,7 +25,7 @@ const formatTime = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
 const SILENT_MIC_MESSAGE =
-  "Mikrofondan ses gelmiyor. Bilgisayarın ses ayarlarında doğru mikrofonun seçili olduğunu ve tarayıcının mikrofona erişim izni olduğunu kontrol et (Mac: Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon).";
+  "Mikrofondan ses gelmiyor. Tarayıcıda doğru mikrofonun seçili olduğunu kontrol et (adres çubuğundaki site ayarları → Mikrofon; iPhone mikrofonu seçiliyse Mac'in kendi mikrofonunu seç). Mac'te ayrıca Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon'da tarayıcıya izin ver.";
 
 function micErrorMessage(error: unknown): string {
   const name = (error as DOMException)?.name;
@@ -87,8 +87,8 @@ export function VoiceInput({
   async function upload(recording: Blob) {
     setPhase("processing");
     try {
-      const { wav, peak } = await toWav16k(recording);
-      if (peak < SILENCE_PEAK) {
+      const { wav, activeSeconds } = await toWav16k(recording);
+      if (activeSeconds < MIN_ACTIVE_SECONDS) {
         // Don't send silence to Azure; the cause is local (OS permission/device).
         setError(SILENT_MIC_MESSAGE);
         return;

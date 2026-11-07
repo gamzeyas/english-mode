@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { peakLevel, SILENCE_PEAK } from "@/lib/audio/recorder";
+import { activeSeconds, MIN_ACTIVE_SECONDS } from "@/lib/audio/recorder";
 import { encodeWav, parseWav, TARGET_SAMPLE_RATE } from "@/lib/audio/wav";
 import {
   AZURE_STT_API_VERSION,
@@ -77,14 +77,31 @@ describe("Azure fast transcription", () => {
   });
 });
 
-describe("peakLevel", () => {
-  it("flags a silent recording and passes real signal", () => {
-    expect(peakLevel(new Float32Array(16_000))).toBeLessThan(SILENCE_PEAK);
-    const tone = Float32Array.from(
-      { length: 1600 },
-      (_, i) => Math.sin(i / 5) * 0.2,
+describe("activeSeconds", () => {
+  it("rejects silence with a stray click (wrong input device)", () => {
+    const silent = new Float32Array(TARGET_SAMPLE_RATE * 4);
+    silent.fill(0.33, 20_000, 20_040); // a 2.5 ms click
+    expect(activeSeconds(silent)).toBeLessThan(MIN_ACTIVE_SECONDS);
+  });
+
+  it("accepts real speech", () => {
+    const bytes = readFileSync("tests/fixtures/speech-sample.wav");
+    const dataAt = bytes.indexOf("data") + 8;
+    const pcm = new Int16Array(
+      bytes.buffer.slice(
+        bytes.byteOffset + dataAt,
+        bytes.byteOffset + bytes.byteLength,
+      ),
     );
-    expect(peakLevel(tone)).toBeGreaterThan(SILENCE_PEAK);
-    expect(peakLevel(Float32Array.of(0.1, -0.7, 0.3))).toBeCloseTo(0.7);
+    const samples = Float32Array.from(pcm, (s) => s / 0x8000);
+    expect(activeSeconds(samples)).toBeGreaterThan(1);
+  });
+
+  it("accepts quiet but continuous speech-level signal", () => {
+    const quiet = Float32Array.from(
+      { length: TARGET_SAMPLE_RATE },
+      (_, i) => Math.sin(i / 3) * 0.01,
+    );
+    expect(activeSeconds(quiet)).toBeGreaterThan(0.9);
   });
 });

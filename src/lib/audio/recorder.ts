@@ -17,23 +17,36 @@ export function canRecordAudio(): boolean {
   );
 }
 
-/**
- * Peak below ~-46 dBFS: the mic delivered (near) silence. Typical when the OS
- * blocks the browser's microphone access or the wrong input device is
- * selected — getUserMedia still succeeds but every sample is ~0.
- */
-export const SILENCE_PEAK = 0.005;
+const WINDOW_SECONDS = 0.02;
+/** 20 ms windows quieter than ~-50 dBFS RMS count as silence. */
+const ACTIVE_RMS = 0.003;
+/** Less than 0.3 s of signal in total: nothing the learner said got through. */
+export const MIN_ACTIVE_SECONDS = 0.3;
 
-export function peakLevel(samples: Float32Array): number {
-  let peak = 0;
-  for (const sample of samples) peak = Math.max(peak, Math.abs(sample));
-  return peak;
+/**
+ * Seconds of the recording that carry signal. Near zero when the OS blocks
+ * the browser's microphone or the wrong input is selected (e.g. a Continuity
+ * iPhone mic): getUserMedia succeeds but the samples are ~0, apart from the
+ * odd click — which is why a single peak is not enough.
+ */
+export function activeSeconds(
+  samples: Float32Array,
+  sampleRate = TARGET_SAMPLE_RATE,
+): number {
+  const size = Math.round(sampleRate * WINDOW_SECONDS);
+  let active = 0;
+  for (let start = 0; start + size <= samples.length; start += size) {
+    let sum = 0;
+    for (let i = start; i < start + size; i++) sum += samples[i] * samples[i];
+    if (Math.sqrt(sum / size) >= ACTIVE_RMS) active++;
+  }
+  return active * WINDOW_SECONDS;
 }
 
 /** Decodes any recorded container and resamples to 16 kHz mono WAV. */
 export async function toWav16k(
   recording: Blob,
-): Promise<{ wav: Blob; peak: number }> {
+): Promise<{ wav: Blob; activeSeconds: number }> {
   const context = new AudioContext();
   try {
     const decoded = await context.decodeAudioData(
@@ -52,7 +65,7 @@ export async function toWav16k(
     const samples = (await offline.startRendering()).getChannelData(0);
     return {
       wav: new Blob([encodeWav(samples)], { type: "audio/wav" }),
-      peak: peakLevel(samples),
+      activeSeconds: activeSeconds(samples),
     };
   } finally {
     void context.close();
