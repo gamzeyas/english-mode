@@ -452,6 +452,42 @@ export type Database = {
           },
         ];
       };
+      message_translations: {
+        Row: {
+          created_at: string;
+          message_id: string;
+          model: string;
+          prompt_version: string;
+          text_tr: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          message_id: string;
+          model: string;
+          prompt_version: string;
+          text_tr: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          message_id?: string;
+          model?: string;
+          prompt_version?: string;
+          text_tr?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "message_translations_message_id_user_id_fkey";
+            columns: ["message_id", "user_id"];
+            isOneToOne: false;
+            referencedRelation: "messages";
+            referencedColumns: ["id", "user_id"];
+          },
+        ];
+      };
       messages: {
         Row: {
           client_message_id: string | null;

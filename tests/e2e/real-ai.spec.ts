@@ -166,6 +166,12 @@ test("generate listening material with Claude and hear it", async ({
   await sentences.first().fill("I think");
   await page.getByRole("button", { name: "Check answers" }).click();
   await expect(page.getByText(/^Score \d+%$/)).toBeVisible({ timeout: 20_000 });
+  // Each checked sentence shows its Turkish meaning (generator v2+).
+  expect(
+    await page
+      .locator('ol li p[lang="tr"].text-sm:not(.text-muted-foreground)')
+      .count(),
+  ).toBeGreaterThanOrEqual(3);
 
   await page.getByRole("button", { name: "Start" }).nth(1).click();
   await expect(page.getByRole("group").filter({ hasText: /^1\./ })).toBeVisible(
@@ -207,4 +213,30 @@ test("voice mode: speak, auto-send, and hear the coach reply", async ({
     timeout: 30_000,
   });
   await expect(page.getByLabel("Your message")).toHaveValue("");
+});
+
+test("coach turns get Turkish meanings and hints build an answer", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "desktop only");
+  await page.goto("/conversation/new");
+  await page.getByRole("button", { name: "Start conversation" }).click();
+  await expect(page).toHaveURL(/\/conversation\/[0-9a-f-]{36}$/);
+  const transcript = page.getByRole("log", { name: "Conversation transcript" });
+  await expect(transcript.locator("li")).toHaveCount(1, { timeout: 60_000 });
+
+  // The translation is generated once and stored: it survives a reload.
+  const meaning = transcript.locator('p[lang="tr"]').first();
+  await expect(meaning).not.toContainText("hazırlanıyor", { timeout: 30_000 });
+  const textTr = (await meaning.textContent())!.trim();
+  expect(textTr.length).toBeGreaterThan(5);
+  await page.reload();
+  await expect(transcript.locator('p[lang="tr"]').first()).toHaveText(textTr);
+
+  await page.getByRole("button", { name: "İpucu" }).click();
+  const hints = page.locator("#conversation-hints");
+  const firstPattern = hints.getByRole("button", { name: /^Use: / }).first();
+  await expect(firstPattern).toBeVisible({ timeout: 30_000 });
+  await firstPattern.click();
+  await expect(page.getByLabel("Your message")).not.toHaveValue("");
 });

@@ -206,6 +206,7 @@ export async function submitListeningAnswers(
       const answer = (typed[i] ?? "").slice(0, MAX_DICTATION_ANSWER);
       return {
         text: s.text,
+        meaningTr: s.meaning_tr,
         focusTr: s.focus_tr,
         answer,
         grade: gradeDictation(s.text, answer),

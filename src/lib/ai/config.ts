@@ -25,6 +25,8 @@ const PRICING: Record<string, Pricing> = {
 };
 
 export const DEFAULT_MODEL = "claude-opus-5-5";
+/** Short, latency-sensitive assist calls: translations and hints. */
+export const DEFAULT_FAST_MODEL = "claude-haiku-5-5";
 
 /** Per-session caps (runaway protection; there is no daily spend cap). */
 export const MAX_USER_TURNS_PER_SESSION = 40;
@@ -52,6 +54,7 @@ export function getAiConfig() {
   return {
     chatModel: env.AI_CHAT_MODEL ?? DEFAULT_MODEL,
     analysisModel: env.AI_ANALYSIS_MODEL ?? DEFAULT_MODEL,
+    fastModel: env.AI_FAST_MODEL ?? DEFAULT_FAST_MODEL,
   };
 }
 

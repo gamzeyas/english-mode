@@ -22,7 +22,16 @@ export async function runStructured<T extends z.ZodType>(input: {
   system: string;
   content: string;
   userId: string;
-  operation: "task_feedback" | "writing_coach" | "assessment" | "listening";
+  operation:
+    | "task_feedback"
+    | "writing_coach"
+    | "assessment"
+    | "listening"
+    | "translation"
+    | "hints";
+  /** Defaults to the analysis model; assist calls pass the fast model. */
+  model?: string;
+  sessionId?: string | null;
   effort?: "low" | "medium";
   maxTokens?: number;
 }): Promise<z.infer<T>> {
@@ -31,7 +40,7 @@ export async function runStructured<T extends z.ZodType>(input: {
   try {
     const response = await getAnthropic().beta.messages.parse({
       ...fallbackOptions(),
-      model: analysisModel,
+      model: input.model ?? analysisModel,
       max_tokens: input.maxTokens ?? 8000,
       output_config: {
         effort: input.effort ?? "low",
@@ -42,7 +51,7 @@ export async function runStructured<T extends z.ZodType>(input: {
     });
     await recordUsage({
       userId: input.userId,
-      sessionId: null,
+      sessionId: input.sessionId ?? null,
       model: response.model,
       operation: input.operation,
       usage: response.usage,

@@ -453,6 +453,11 @@ function ResultView({
                 </span>
               ))}
             </p>
+            {sentence.meaningTr && (
+              <p lang="tr" className="text-sm">
+                {sentence.meaningTr}
+              </p>
+            )}
             {sentence.grade.extra.length > 0 && (
               <p className="text-xs text-muted-foreground">
                 Fazladan yazdıkların: {sentence.grade.extra.join(", ")}
@@ -511,7 +516,17 @@ function ResultView({
               <dt className="font-medium text-muted-foreground uppercase">
                 {line.speaker}
               </dt>
-              <dd>{line.text}</dd>
+              <dd>
+                {line.text}
+                {line.meaning_tr && (
+                  <span
+                    lang="tr"
+                    className="block text-xs text-muted-foreground"
+                  >
+                    {line.meaning_tr}
+                  </span>
+                )}
+              </dd>
             </div>
           ))}
         </dl>

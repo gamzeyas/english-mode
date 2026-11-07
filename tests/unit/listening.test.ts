@@ -3,6 +3,7 @@ import {
   validateComprehension,
   validateDictation,
 } from "@/lib/listening/content";
+import { validateHints } from "@/lib/assist/schema";
 import { gradeDictation } from "@/lib/listening/grade";
 import { billedCharacters, buildSsml, VOICES } from "@/lib/speech/tts";
 
@@ -79,6 +80,7 @@ describe("listening material validation", () => {
     const lines = Array.from({ length: 6 }, (_, i) => ({
       speaker: (i % 2 ? "b" : "a") as "a" | "b",
       text: "Some line here.",
+      meaning_tr: "Burada bir satır.",
     }));
     const question = (answer_index: number) => ({
       question: "Why?",
@@ -106,10 +108,37 @@ describe("listening material validation", () => {
   it("caps dictation at five non-empty sentences", () => {
     const sentences = Array.from({ length: 7 }, (_, i) => ({
       text: i === 1 ? " " : `Sentence number ${i}.`,
+      meaning_tr: "x",
       focus_tr: "x",
     }));
     expect(validateDictation({ title: "T", sentences }).sentences).toHaveLength(
       5,
     );
+  });
+});
+
+describe("validateHints", () => {
+  it("drops empty items and caps the lists", () => {
+    const hints = validateHints({
+      idea_tr: " Hafta sonu planlarını anlat. ",
+      patterns: [
+        {
+          pattern: "I'm planning to ...",
+          example: "I'm planning to rest.",
+          tr: "Plan.",
+        },
+        { pattern: " ", example: "x", tr: "x" },
+      ],
+      words: Array.from({ length: 12 }, (_, i) => ({ word: `w${i}`, tr: "t" })),
+    });
+    expect(hints.idea_tr).toBe("Hafta sonu planlarını anlat.");
+    expect(hints.patterns).toHaveLength(1);
+    expect(hints.words).toHaveLength(8);
+  });
+
+  it("rejects hints with nothing usable", () => {
+    expect(() =>
+      validateHints({ idea_tr: "x", patterns: [], words: [] }),
+    ).toThrow();
   });
 });

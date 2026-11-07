@@ -14,6 +14,7 @@ import {
   Eye,
   EyeOff,
   Headphones,
+  Languages,
   Loader2,
   RotateCcw,
   SendHorizontal,
@@ -27,9 +28,14 @@ import { useSpeechPlayer } from "@/lib/audio/use-speech-player";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceInput } from "@/components/voice/voice-input";
+import { CoachTranslation } from "@/components/conversation/coach-translation";
+import { ConversationHints } from "@/components/conversation/conversation-hints";
 import type { SessionView } from "@/lib/sessions/service";
 
-type ChatMessage = SessionView["messages"][number] & { pending?: boolean };
+type ChatMessage = Omit<SessionView["messages"][number], "translationTr"> & {
+  translationTr?: string | null;
+  pending?: boolean;
+};
 type Modality = "text" | "speech_transcript";
 type FailedSend = {
   clientMessageId: string;
@@ -42,11 +48,17 @@ type FailedSend = {
 const MAX_CHARS = 2000;
 const PREFS_KEY = "english-mode:chat-voice";
 
-type VoicePrefs = { voiceMode: boolean; hideText: boolean; slow: boolean };
+type VoicePrefs = {
+  voiceMode: boolean;
+  hideText: boolean;
+  slow: boolean;
+  turkish: boolean;
+};
 const DEFAULT_PREFS: VoicePrefs = {
   voiceMode: false,
   hideText: false,
   slow: false,
+  turkish: true,
 };
 
 /** Per-browser listening preferences; storage may be unavailable. */
@@ -197,6 +209,10 @@ export function ChatSession({ session }: { session: SessionView }) {
     }
   }
 
+  const last = messages.at(-1);
+  const lastCoachMessageId =
+    last?.role === "assistant" && !last.pending ? last.id : null;
+
   const isPlaying = (messageId: string) =>
     player.playing?.startsWith(messageId) ?? false;
 
@@ -283,6 +299,12 @@ export function ChatSession({ session }: { session: SessionView }) {
             icon={<Snail aria-hidden />}
             label="Slow"
           />
+          <ToggleButton
+            pressed={prefs.turkish}
+            onClick={() => updatePrefs({ turkish: !prefs.turkish })}
+            icon={<Languages aria-hidden />}
+            label="Türkçe"
+          />
         </div>
       )}
 
@@ -340,6 +362,15 @@ export function ChatSession({ session }: { session: SessionView }) {
                   message.content
                 )}
               </div>
+              {message.role === "assistant" &&
+                !message.pending &&
+                prefs.turkish &&
+                (!prefs.hideText || revealed.has(message.id)) && (
+                  <CoachTranslation
+                    messageId={message.id}
+                    initial={message.translationTr}
+                  />
+                )}
               {message.role === "assistant" && !message.pending && (
                 <div className="flex gap-1">
                   <Button
@@ -448,54 +479,67 @@ export function ChatSession({ session }: { session: SessionView }) {
       {active && (
         <form
           onSubmit={send}
-          className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex items-end gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:bottom-0"
+          className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] space-y-2 border-t bg-background/95 px-4 py-3 backdrop-blur md:bottom-0"
         >
-          <VoiceInput
+          <ConversationHints
             sessionId={session.id}
-            disabled={sending || !!failed}
-            statusPlacement="above"
-            onTranscript={(text) => {
-              // Voice mode is a spoken exchange: send the turn as heard.
-              if (prefsRef.current.voiceMode && !draft.trim()) {
-                submit(text, "speech_transcript");
-                return;
-              }
-              // Otherwise the learner can correct the transcript first.
-              setDraft((current) => (current ? `${current} ${text}` : text));
-              setDraftModality("speech_transcript");
+            lastCoachMessageId={lastCoachMessageId}
+            disabled={sending}
+            onUse={(text) => {
+              setDraft((current) =>
+                current.trim() ? `${current.trimEnd()} ${text}` : text,
+              );
               composer.current?.focus();
             }}
           />
-          <label htmlFor="composer" className="sr-only">
-            Your message
-          </label>
-          <Textarea
-            id="composer"
-            ref={composer}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              if (!event.target.value) setDraftModality("text");
-            }}
-            onKeyDown={onKeyDown}
-            placeholder={
-              failed
-                ? "Retry or dismiss the error first"
-                : "Type your answer in English…"
-            }
-            rows={1}
-            maxLength={MAX_CHARS}
-            disabled={!!failed}
-            className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl py-3 text-[0.95rem]"
-          />
-          <Button
-            type="submit"
-            disabled={!draft.trim() || sending || !!failed}
-            className="size-12 rounded-full"
-            aria-label="Send message"
-          >
-            <SendHorizontal aria-hidden className="size-5" />
-          </Button>
+          <div className="flex items-end gap-2">
+            <VoiceInput
+              sessionId={session.id}
+              disabled={sending || !!failed}
+              statusPlacement="above"
+              onTranscript={(text) => {
+                // Voice mode is a spoken exchange: send the turn as heard.
+                if (prefsRef.current.voiceMode && !draft.trim()) {
+                  submit(text, "speech_transcript");
+                  return;
+                }
+                // Otherwise the learner can correct the transcript first.
+                setDraft((current) => (current ? `${current} ${text}` : text));
+                setDraftModality("speech_transcript");
+                composer.current?.focus();
+              }}
+            />
+            <label htmlFor="composer" className="sr-only">
+              Your message
+            </label>
+            <Textarea
+              id="composer"
+              ref={composer}
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                if (!event.target.value) setDraftModality("text");
+              }}
+              onKeyDown={onKeyDown}
+              placeholder={
+                failed
+                  ? "Retry or dismiss the error first"
+                  : "Type your answer in English…"
+              }
+              rows={1}
+              maxLength={MAX_CHARS}
+              disabled={!!failed}
+              className="max-h-40 min-h-12 flex-1 resize-none rounded-2xl py-3 text-[0.95rem]"
+            />
+            <Button
+              type="submit"
+              disabled={!draft.trim() || sending || !!failed}
+              className="size-12 rounded-full"
+              aria-label="Send message"
+            >
+              <SendHorizontal aria-hidden className="size-5" />
+            </Button>
+          </div>
         </form>
       )}
     </div>

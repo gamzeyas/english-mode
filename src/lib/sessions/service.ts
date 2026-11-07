@@ -259,6 +259,16 @@ export async function getSessionView(sessionId: string) {
       : Promise.resolve({ data: null }),
   ]);
   const metadata = session.metadata as unknown as SessionMetadata;
+  const { data: translations } = await supabase
+    .from("message_translations")
+    .select("message_id, text_tr")
+    .in(
+      "message_id",
+      messages.filter((m) => m.role === "assistant").map((m) => m.id),
+    );
+  const translationOf = new Map(
+    (translations ?? []).map((t) => [t.message_id, t.text_tr]),
+  );
   return {
     id: session.id,
     status: session.status,
@@ -285,6 +295,7 @@ export async function getSessionView(sessionId: string) {
         role: m.role as "user" | "assistant",
         content: m.content,
         createdAt: m.created_at,
+        translationTr: translationOf.get(m.id) ?? null,
       })),
   };
 }

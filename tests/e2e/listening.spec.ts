@@ -126,6 +126,24 @@ test("chat: listening options and coach audio", async ({ page }) => {
     });
   }
   await page.getByRole("button", { name: "Listen first" }).click();
+
+  // Turkish meanings are on by default and can be switched off.
+  const turkish = page.getByRole("button", { name: "Türkçe" });
+  await expect(turkish).toHaveAttribute("aria-pressed", "true");
+  await turkish.click();
+  await expect(turkish).toHaveAttribute("aria-pressed", "false");
+  await turkish.click();
+
+  // Hints answer the coach's latest turn.
+  await page.getByRole("button", { name: "İpucu" }).click();
+  await expect(page.locator("#conversation-hints")).toBeVisible();
+  if (!process.env.E2E_REAL_AI) {
+    await expect(
+      page.locator("#conversation-hints").getByRole("alert"),
+    ).toContainText("API anahtarı eksik");
+  }
+  await page.getByRole("button", { name: "Close hints" }).click();
+  await expect(page.locator("#conversation-hints")).toHaveCount(0);
 });
 
 test("speech endpoints only speak server-owned text", async ({ request }) => {

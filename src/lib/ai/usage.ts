@@ -14,7 +14,9 @@ export async function recordUsage(entry: {
     | "task_feedback"
     | "writing_coach"
     | "assessment"
-    | "listening";
+    | "listening"
+    | "translation"
+    | "hints";
   usage: TokenUsage;
 }) {
   const admin = createAdminClient();

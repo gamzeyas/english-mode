@@ -26,6 +26,7 @@ export const serverEnvSchema = publicEnvSchema.extend({
   /** Override the coach / analyzer model (defaults in src/lib/ai/config.ts). */
   AI_CHAT_MODEL: z.string().min(1).optional(),
   AI_ANALYSIS_MODEL: z.string().min(1).optional(),
+  AI_FAST_MODEL: z.string().min(1).optional(),
   AZURE_SPEECH_KEY: optionalSecret,
   AZURE_SPEECH_REGION: z.string().min(1).optional(),
   /** Optional custom endpoint (https://<resource>.cognitiveservices.azure.com). */

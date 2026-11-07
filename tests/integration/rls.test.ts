@@ -385,6 +385,49 @@ describe("assignments, submissions, writing, assessments (Milestone 4)", () => {
     expect(gone).toEqual([]);
   });
 
+  it("coach translations are server-written and private", async () => {
+    const { data: session } = await a.client
+      .from("sessions")
+      .insert({ user_id: a.id, mode: "text" })
+      .select("id")
+      .single();
+    const { data: message } = await a.client
+      .from("messages")
+      .insert({
+        session_id: session!.id,
+        user_id: a.id,
+        role: "assistant",
+        content: "How was your week?",
+        sequence_number: 0,
+      })
+      .select("id")
+      .single();
+    const forged = await a.client.from("message_translations").insert({
+      message_id: message!.id,
+      user_id: a.id,
+      text_tr: "x",
+      model: "x",
+      prompt_version: "x",
+    });
+    expect(forged.error?.code).toBe("42501");
+
+    await admin.from("message_translations").insert({
+      message_id: message!.id,
+      user_id: a.id,
+      text_tr: "Haftan nasıl geçti?",
+      model: "test",
+      prompt_version: "test",
+    });
+    const { data: own } = await a.client
+      .from("message_translations")
+      .select("text_tr");
+    expect(own).toEqual([{ text_tr: "Haftan nasıl geçti?" }]);
+    const { data: seenByB } = await b.client
+      .from("message_translations")
+      .select("message_id");
+    expect(seenByB).toEqual([]);
+  });
+
   it("listening exercises are private, server-written and server-graded", async () => {
     const forged = await a.client.from("listening_exercises").insert({
       user_id: a.id,

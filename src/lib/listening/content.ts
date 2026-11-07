@@ -4,13 +4,25 @@ import type { DictationGrade } from "@/lib/listening/grade";
 /** Structured output schemas for generated listening material. */
 export const dictationSchema = z.object({
   title: z.string(),
-  sentences: z.array(z.object({ text: z.string(), focus_tr: z.string() })),
+  sentences: z.array(
+    z.object({
+      text: z.string(),
+      meaning_tr: z.string(),
+      focus_tr: z.string(),
+    }),
+  ),
 });
 
 export const comprehensionSchema = z.object({
   title: z.string(),
   context_tr: z.string(),
-  lines: z.array(z.object({ speaker: z.enum(["a", "b"]), text: z.string() })),
+  lines: z.array(
+    z.object({
+      speaker: z.enum(["a", "b"]),
+      text: z.string(),
+      meaning_tr: z.string(),
+    }),
+  ),
   questions: z.array(
     z.object({
       question: z.string(),
@@ -37,7 +49,11 @@ const MAX_DIALOGUE_CHARS = 1800;
  */
 export function validateDictation(raw: DictationContent): DictationContent {
   const sentences = raw.sentences
-    .map((s) => ({ text: s.text.trim(), focus_tr: s.focus_tr.trim() }))
+    .map((s) => ({
+      text: s.text.trim(),
+      meaning_tr: s.meaning_tr.trim(),
+      focus_tr: s.focus_tr.trim(),
+    }))
     .filter((s) => s.text && s.text.length <= MAX_SENTENCE_CHARS);
   if (sentences.length < 3) throw new Error("dictation: too few sentences");
   return {
@@ -50,7 +66,11 @@ export function validateComprehension(
   raw: ComprehensionContent,
 ): ComprehensionContent {
   const lines = raw.lines
-    .map((l) => ({ speaker: l.speaker, text: l.text.trim() }))
+    .map((l) => ({
+      speaker: l.speaker,
+      text: l.text.trim(),
+      meaning_tr: l.meaning_tr.trim(),
+    }))
     .filter((l) => l.text);
   const chars = lines.reduce((sum, l) => sum + l.text.length, 0);
   if (lines.length < 4 || chars > MAX_DIALOGUE_CHARS)
@@ -94,6 +114,8 @@ export type ListeningResult =
       kind: "dictation";
       sentences: {
         text: string;
+        /** Absent on exercises generated before translations were added. */
+        meaningTr?: string;
         focusTr: string;
         answer: string;
         grade: DictationGrade;
@@ -101,7 +123,9 @@ export type ListeningResult =
     }
   | {
       kind: "comprehension";
-      lines: ComprehensionContent["lines"];
+      lines: (Omit<ComprehensionContent["lines"][number], "meaning_tr"> & {
+        meaning_tr?: string;
+      })[];
       questions: {
         question: string;
         options: string[];
