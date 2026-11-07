@@ -44,7 +44,7 @@ export async function synthesize(
       "Seslendirilecek metin uygun değil.",
     );
 
-  await assertAiRateLimit(user.id);
+  await assertAiRateLimit(user.id, "azure");
   let audio: ArrayBuffer;
   try {
     audio = await synthesizeWithAzure({

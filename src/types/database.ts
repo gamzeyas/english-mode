@@ -623,34 +623,46 @@ export type Database = {
       };
       pronunciation_attempts: {
         Row: {
+          assessor_version: string | null;
           created_at: string;
           id: string;
           locale: string;
           private_audio_path: string | null;
+          pron_score: number | null;
           reference_text: string;
           result: Json | null;
           session_id: string | null;
+          source: string;
+          source_ref: string | null;
           user_id: string;
         };
         ComputedFields: never;
         Insert: {
+          assessor_version?: string | null;
           created_at?: string;
           id?: string;
           locale?: string;
           private_audio_path?: string | null;
+          pron_score?: number | null;
           reference_text: string;
           result?: Json | null;
           session_id?: string | null;
+          source?: string;
+          source_ref?: string | null;
           user_id: string;
         };
         Update: {
+          assessor_version?: string | null;
           created_at?: string;
           id?: string;
           locale?: string;
           private_audio_path?: string | null;
+          pron_score?: number | null;
           reference_text?: string;
           result?: Json | null;
           session_id?: string | null;
+          source?: string;
+          source_ref?: string | null;
           user_id?: string;
         };
         Relationships: [

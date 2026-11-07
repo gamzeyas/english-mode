@@ -27,17 +27,8 @@ export function isSpeechConfigured(): boolean {
   return Boolean(env.AZURE_SPEECH_KEY && env.AZURE_SPEECH_REGION);
 }
 
-/**
- * POST /api/audio/transcribe (PRD §9, §10): consent, format, size and
- * duration checks, then Azure fast transcription. The raw audio is only held
- * in memory for the request and never stored (PRD §14 data minimisation);
- * an audio_assets row records metadata (provider, duration) for transparency.
- */
-export async function transcribeRecording(
-  user: CurrentUser,
-  profile: Profile,
-  input: { audio: Blob; sessionId: string | null },
-) {
+/** Voice features need an active grant of the current consent text. */
+export async function assertVoiceConsent() {
   const consents = await getActiveConsents();
   const voice = consents.find((c) => c.consent_type === "voice_processing");
   if (!voice) throw new SessionError("consent_required");
@@ -48,14 +39,20 @@ export async function transcribeRecording(
       "Ses onayı metni güncellendi (Azure Speech). Ayarlar → Edit'ten tekrar onayla.",
     );
   }
+}
 
-  if (input.audio.size > MAX_WAV_BYTES) {
-    throw new SessionError(
-      "invalid_request",
-      `Kayıt en fazla ${MAX_RECORDING_SECONDS / 60} dakika olabilir.`,
-    );
+const tooLong = (maxSeconds: number) =>
+  maxSeconds >= 60
+    ? `Kayıt en fazla ${maxSeconds / 60} dakika olabilir.`
+    : `Kayıt en fazla ${maxSeconds} saniye olabilir.`;
+
+/** Size, format (16 kHz mono 16-bit WAV) and duration checks. */
+export async function readRecording(audio: Blob, maxSeconds: number) {
+  const maxBytes = 44 + Math.ceil((maxSeconds + 2) * TARGET_SAMPLE_RATE * 2);
+  if (audio.size > Math.min(maxBytes, MAX_WAV_BYTES)) {
+    throw new SessionError("invalid_request", tooLong(maxSeconds));
   }
-  const bytes = await input.audio.arrayBuffer();
+  const bytes = await audio.arrayBuffer();
   const wav = parseWav(bytes);
   if (
     !wav ||
@@ -68,12 +65,28 @@ export async function transcribeRecording(
   if (wav.durationSeconds < MIN_RECORDING_SECONDS) {
     throw new SessionError("no_speech");
   }
-  if (wav.durationSeconds > MAX_RECORDING_SECONDS + 1) {
-    throw new SessionError(
-      "invalid_request",
-      `Kayıt en fazla ${MAX_RECORDING_SECONDS / 60} dakika olabilir.`,
-    );
+  if (wav.durationSeconds > maxSeconds + 1) {
+    throw new SessionError("invalid_request", tooLong(maxSeconds));
   }
+  return { bytes, wav };
+}
+
+/**
+ * POST /api/audio/transcribe (PRD §9, §10): consent, format, size and
+ * duration checks, then Azure fast transcription. The raw audio is only held
+ * in memory for the request and never stored (PRD §14 data minimisation);
+ * an audio_assets row records metadata (provider, duration) for transparency.
+ */
+export async function transcribeRecording(
+  user: CurrentUser,
+  profile: Profile,
+  input: { audio: Blob; sessionId: string | null },
+) {
+  await assertVoiceConsent();
+  const { bytes, wav } = await readRecording(
+    input.audio,
+    MAX_RECORDING_SECONDS,
+  );
 
   const env = getServerEnv();
   if (!env.AZURE_SPEECH_KEY || !env.AZURE_SPEECH_REGION) {
@@ -92,7 +105,7 @@ export async function transcribeRecording(
     sessionId = data?.id ?? null;
   }
 
-  await assertAiRateLimit(user.id);
+  await assertAiRateLimit(user.id, "azure");
 
   let result;
   try {

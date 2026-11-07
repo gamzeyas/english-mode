@@ -4,7 +4,13 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 7a — spoken coach and listening practice.** Coach turns can be read aloud
+> **Status: Milestone 7 — spoken coach, listening and pronunciation.** The Pronunciation lab
+> scores read-aloud sentences with Azure pronunciation assessment (overall, accuracy, fluency,
+> completeness; prosody for en-US only, otherwise shown as unavailable), per word and per IPA
+> sound, with Turkish tips for sounds Turkish speakers commonly substitute. Sentences come from
+> built-in practice sets, the learner's phrase pool or their own text. Coach turns show a
+> Turkish translation and "İpucu" suggests sentence frames and words for the next answer.
+> Milestone 7a: coach turns can be read aloud
 > (Azure neural TTS, American or British voice, normal or slow); voice mode sends a recorded
 > turn as heard and plays the reply, and "Listen first" hides the text until revealed. The
 > Listening page offers Claude-generated dictation (word-level, server-side grading) and
@@ -146,7 +152,7 @@ tests/unit, tests/e2e
 | 5   | PWA hardening, deployment                       | ✅     |
 | 6   | Recorded voice + transcription                  | ✅     |
 | 7a  | Spoken coach (TTS), voice mode, listening       | ✅     |
-| 7b  | Pronunciation lab (Azure assessment)            |        |
+| 7b  | Pronunciation lab, translations, hints          | ✅     |
 | 8   | Adaptive planning, notifications                |        |
 
 ## Known limitations
@@ -165,7 +171,15 @@ tests/unit, tests/e2e
   realtime duplex call: Claude has no realtime voice API, so the PRD's OpenAI Realtime plan was
   replaced to keep one coach. TTS is billed per character (`ai_usage_logs.characters`) and
   counts toward the same burst limits. Settings → Microphone picks the recording input.
-- Listening exercises are not yet part of the daily assignment plan or progress charts.
+- Listening exercises and pronunciation attempts are not yet part of the daily assignment plan
+  or progress charts.
+- Pronunciation scores are Azure's automatic estimate against its native-speaker model, shown
+  with that caveat. en-GB assessment returns sound-level scores without sound names, so the lab
+  shows word-level results and says so (en-US gives IPA sounds and prosody). Recordings are
+  capped at 30 s and not stored.
+- Rate limits: Claude 20/min and 150/10 min; Azure speech (transcription, TTS, pronunciation)
+  separately 60/min and 400/10 min, since practice comes in bursts. Translations and hints use
+  `AI_FAST_MODEL` (default `claude-haiku-5-5`).
 - The baseline assessment is still text-only.
 - Review assignments are completed with "Mark done" once at least one card was graded that day;
   conversation/roleplay assignments complete when the linked session ends with a learner reply.

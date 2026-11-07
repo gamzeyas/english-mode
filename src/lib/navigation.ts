@@ -1,4 +1,5 @@
 import {
+  AudioLines,
   BarChart3,
   BookOpenText,
   Drama,
@@ -36,6 +37,7 @@ export const primaryNav: NavItem[] = [
 /** Overflow on mobile, listed below the primary items on desktop. */
 export const secondaryNav: NavItem[] = [
   { href: "/listening", label: "Listening", icon: Headphones },
+  { href: "/pronunciation", label: "Pronunciation", icon: AudioLines },
   { href: "/writing", label: "Writing", icon: PenLine },
   { href: "/assignments", label: "Assignments", icon: BookOpenText },
   { href: "/settings", label: "Settings", icon: Settings },

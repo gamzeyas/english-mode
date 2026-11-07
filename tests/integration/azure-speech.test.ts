@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { encodeWav } from "@/lib/audio/wav";
 import { transcribeWithAzure } from "@/lib/speech/azure";
+import { assessWithAzure } from "@/lib/speech/pronunciation";
 import { buildSsml, synthesizeWithAzure } from "@/lib/speech/tts";
 
 /**
@@ -79,5 +80,34 @@ describe.skipIf(!key || !region)("Azure fast transcription (real)", () => {
     });
     console.info("[azure] tts round trip:", result.text);
     expect(result.text.toLowerCase()).toContain("creative agency");
+  });
+
+  it("assesses a read-aloud recording against its reference text", async () => {
+    // The sample says "I work worked at a creative agency, and I'm
+    // interesting melodic techno": an inserted word and a wrong ending.
+    const sample = readFileSync("tests/fixtures/speech-sample.wav");
+    const result = await assessWithAzure({
+      key: key!,
+      region: region!,
+      audio: sample.buffer.slice(
+        sample.byteOffset,
+        sample.byteOffset + sample.byteLength,
+      ),
+      referenceText:
+        "I work at a creative agency, and I'm interested in melodic techno.",
+      locale: "en-US",
+    });
+    console.info("[azure] pronunciation:", JSON.stringify(result?.scores));
+    expect(result).not.toBeNull();
+    expect(result!.scores.prosody).not.toBeNull();
+    expect(result!.words.some((w) => w.errorType === "Insertion")).toBe(true);
+    const interested = result!.words.find((w) => w.word === "interested");
+    expect(interested?.phonemes.length).toBeGreaterThan(3);
+    // IPA, not the default SAPI symbols.
+    expect(
+      result!.words
+        .flatMap((w) => w.phonemes)
+        .some((p) => /[ɪəæɝ]/.test(p.phoneme)),
+    ).toBe(true);
   });
 });

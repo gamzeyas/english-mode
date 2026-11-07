@@ -385,6 +385,47 @@ describe("assignments, submissions, writing, assessments (Milestone 4)", () => {
     expect(gone).toEqual([]);
   });
 
+  it("pronunciation attempts are server-written, private and deletable", async () => {
+    const forged = await a.client.from("pronunciation_attempts").insert({
+      user_id: a.id,
+      reference_text: "Hello there.",
+      pron_score: 100,
+    });
+    expect(forged.error?.code).toBe("42501");
+    const { data: attempt } = await admin
+      .from("pronunciation_attempts")
+      .insert({
+        user_id: a.id,
+        reference_text: "Hello there.",
+        source: "custom",
+        pron_score: 72,
+        result: {},
+      })
+      .select("id")
+      .single();
+    const { error } = await a.client
+      .from("pronunciation_attempts")
+      .update({ pron_score: 100 })
+      .eq("id", attempt!.id);
+    expect(error?.code).toBe("42501");
+    await b.client
+      .from("pronunciation_attempts")
+      .delete()
+      .eq("id", attempt!.id);
+    const { data: seenByA } = await a.client
+      .from("pronunciation_attempts")
+      .select("pron_score");
+    expect(seenByA).toEqual([{ pron_score: 72 }]);
+    await a.client
+      .from("pronunciation_attempts")
+      .delete()
+      .eq("id", attempt!.id);
+    const { data: gone } = await a.client
+      .from("pronunciation_attempts")
+      .select("id");
+    expect(gone).toEqual([]);
+  });
+
   it("coach translations are server-written and private", async () => {
     const { data: session } = await a.client
       .from("sessions")

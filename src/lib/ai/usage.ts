@@ -61,26 +61,35 @@ export async function recordTtsUsage(entry: {
   if (error) console.error("[ai-usage] tts insert failed", error.code);
 }
 
-/** Reported Azure fast-transcription list price (USD per audio hour). */
-const AZURE_FAST_TRANSCRIPTION_USD_PER_HOUR = 0.36;
+/**
+ * Reported Azure list prices (USD per audio hour): fast transcription, and
+ * pronunciation assessment, which is billed like standard speech to text.
+ */
+const AZURE_AUDIO_USD_PER_HOUR = {
+  "fast-transcription": 0.36,
+  "pronunciation-assessment": 1,
+} as const;
 
 /** Speech-to-text usage: audio seconds only, never the transcript. */
 export async function recordAudioUsage(entry: {
   userId: string;
   sessionId: string | null;
   audioSeconds: number;
+  model?: keyof typeof AZURE_AUDIO_USD_PER_HOUR;
+  operation?: "transcription" | "pronunciation";
 }) {
+  const model = entry.model ?? "fast-transcription";
   const { error } = await createAdminClient()
     .from("ai_usage_logs")
     .insert({
       user_id: entry.userId,
       session_id: entry.sessionId,
       provider: "azure",
-      model: "fast-transcription",
-      operation: "transcription",
+      model,
+      operation: entry.operation ?? "transcription",
       audio_seconds: Math.round(entry.audioSeconds * 10) / 10,
       estimated_cost_usd:
-        (entry.audioSeconds / 3600) * AZURE_FAST_TRANSCRIPTION_USD_PER_HOUR,
+        (entry.audioSeconds / 3600) * AZURE_AUDIO_USD_PER_HOUR[model],
     });
   if (error) console.error("[ai-usage] audio insert failed", error.code);
 }

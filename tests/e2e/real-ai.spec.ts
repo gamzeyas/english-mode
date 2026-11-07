@@ -85,7 +85,9 @@ test.describe("Milestone 4 with real Claude", () => {
     ).toBeAttached();
 
     await page.goto("/assignments");
-    await expect(page.getByText("Follow-up", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Follow-up", { exact: true }).first(),
+    ).toBeVisible();
   });
 
   test("writing coach improves a text and checks the revision", async ({

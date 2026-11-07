@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AI_RATE_LIMITS, estimateCostUsd, exceedsLimit } from "@/lib/ai/config";
+import {
+  AI_RATE_LIMITS,
+  estimateCostUsd,
+  exceedsLimit,
+  SPEECH_RATE_LIMITS,
+} from "@/lib/ai/config";
 import {
   buildLearnerContextPrompt,
   type LearnerContext,
@@ -83,5 +88,9 @@ describe("exceedsLimit", () => {
     expect(exceedsLimit([AI_RATE_LIMITS[0].max - 1, 10])).toBe(false);
     expect(exceedsLimit([AI_RATE_LIMITS[0].max, 10])).toBe(true);
     expect(exceedsLimit([5, AI_RATE_LIMITS[1].max])).toBe(true);
+    // Speech has wider windows than Claude.
+    expect(exceedsLimit([AI_RATE_LIMITS[0].max, 10], SPEECH_RATE_LIMITS)).toBe(
+      false,
+    );
   });
 });

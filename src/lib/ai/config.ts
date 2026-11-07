@@ -42,6 +42,17 @@ export const AI_RATE_LIMITS = [
   { windowMs: 10 * 60_000, max: 150 },
 ] as const;
 
+/**
+ * Azure speech calls (transcription, TTS, pronunciation) are cheap and come
+ * in bursts while practising — replaying dictation sentences, a voice-mode
+ * turn — so they get their own, wider windows instead of eating into
+ * Claude's.
+ */
+export const SPEECH_RATE_LIMITS = [
+  { windowMs: 60_000, max: 60 },
+  { windowMs: 10 * 60_000, max: 400 },
+] as const;
+
 export function exceedsLimit(
   counts: number[],
   limits: readonly { max: number }[] = AI_RATE_LIMITS,
