@@ -78,3 +78,7 @@ export const ERROR_LABELS_TR: Record<
   MissingBreak: "Burada kısa bir duraklama olmalı",
   Monotone: "Tonlama düz",
 };
+
+/** The general tip for one sound, if there is one for Turkish speakers. */
+export const tipForPhoneme = (phoneme: string): string | null =>
+  PHONEME_TIPS[phoneme] ?? null;

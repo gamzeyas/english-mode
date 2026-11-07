@@ -13,7 +13,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProfile } from "@/lib/auth/dal";
 import { formatLocalDate } from "@/lib/learning/day";
-import { getProgressStats, MIN_SAMPLE } from "@/lib/learning/progress";
+import {
+  getProgressStats,
+  getSkillProgress,
+  MIN_SAMPLE,
+} from "@/lib/learning/progress";
+import { DAYPARTS_TR, WEEKDAYS_TR } from "@/lib/learning/skill-progress";
+import { tipForPhoneme } from "@/lib/pronunciation/tips";
 
 export const metadata: Metadata = { title: "Progress" };
 
@@ -27,6 +33,9 @@ export default function ProgressPage() {
       />
       <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
         <Stats />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="h-80 w-full rounded-xl" />}>
+        <SkillSections />
       </Suspense>
     </PageContainer>
   );
@@ -216,6 +225,228 @@ async function Stats() {
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+}
+
+async function SkillSections() {
+  const profile = await getProfile();
+  const { listening, pronunciation, activity } = await getSkillProgress(
+    profile.timezone,
+  );
+  const pct = (value: number | null) =>
+    value === null ? "—" : `${Math.round(value * 100)}%`;
+  const totalActivity = activity.weekdays.reduce((a, b) => a + b, 0);
+
+  return (
+    <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Listening</CardTitle>
+          <CardDescription>
+            Son 28 gündeki dikte ve anlama alıştırmaların.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <dl className="grid grid-cols-3 gap-3 text-center">
+            <Count label="Exercises" value={listening.count} />
+            <div>
+              <dt className="text-xs text-muted-foreground">Dictation</dt>
+              <dd className="text-2xl font-semibold tabular-nums">
+                {pct(listening.dictationAvg)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Comprehension</dt>
+              <dd className="text-2xl font-semibold tabular-nums">
+                {pct(listening.comprehensionAvg)}
+              </dd>
+            </div>
+          </dl>
+          {listening.count === 0 ? (
+            <EmptyHint
+              href="/listening"
+              text="Henüz ölçülmedi — bir dikte ile başla."
+            />
+          ) : (
+            <ScoreBars
+              label="Recent listening scores"
+              scores={listening.recent.map((r) => ({
+                value: r.score * 100,
+                at: r.at,
+              }))}
+              timeZone={profile.timezone}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Pronunciation</CardTitle>
+          <CardDescription>
+            Sesli okuma değerlendirmeleri (Azure, otomatik tahmin).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <dl className="grid grid-cols-2 gap-3 text-center">
+            <Count label="Attempts" value={pronunciation.count} />
+            <div>
+              <dt className="text-xs text-muted-foreground">Average</dt>
+              <dd className="text-2xl font-semibold tabular-nums">
+                {pronunciation.average === null
+                  ? "—"
+                  : Math.round(pronunciation.average)}
+              </dd>
+            </div>
+          </dl>
+          {pronunciation.count === 0 ? (
+            <EmptyHint
+              href="/pronunciation"
+              text="Henüz ölçülmedi — bir cümleyi sesli oku."
+            />
+          ) : (
+            <ScoreBars
+              label="Recent pronunciation scores"
+              scores={pronunciation.recent.map((r) => ({
+                value: r.score,
+                at: r.at,
+              }))}
+              timeZone={profile.timezone}
+            />
+          )}
+          {pronunciation.weakestSounds.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">En çok zorlandığın sesler</p>
+              <ul className="space-y-2 text-sm">
+                {pronunciation.weakestSounds.map((sound) => (
+                  <li key={sound.phoneme} className="flex gap-3">
+                    <span className="w-12 shrink-0 font-mono">
+                      /{sound.phoneme}/
+                    </span>
+                    <span className="w-10 shrink-0 tabular-nums">
+                      {Math.round(sound.average)}
+                    </span>
+                    <span lang="tr" className="text-muted-foreground">
+                      {tipForPhoneme(sound.phoneme) ??
+                        `${sound.samples} örnekte ortalama.`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle>When you practise</CardTitle>
+          <CardDescription>
+            Son 28 gündeki çalışmaların gün ve saat dağılımı ({profile.timezone}
+            ). Hatırlatmayı en çok çalıştığın zamana koymak işe yarar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {totalActivity === 0 ? (
+            <p className="text-sm text-muted-foreground">Henüz veri yok.</p>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              <Distribution
+                label="Weekday"
+                names={WEEKDAYS_TR}
+                counts={activity.weekdays}
+              />
+              <Distribution
+                label="Time of day"
+                names={[...DAYPARTS_TR]}
+                counts={activity.dayparts}
+              />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function EmptyHint({ href, text }: { href: string; text: string }) {
+  return (
+    <p className="text-sm text-muted-foreground">
+      <Link
+        href={href}
+        className="text-primary underline-offset-4 hover:underline"
+      >
+        {text}
+      </Link>
+    </p>
+  );
+}
+
+/** Latest scores as bars (0–100), oldest first, with an accessible list. */
+function ScoreBars({
+  label,
+  scores,
+  timeZone,
+}: {
+  label: string;
+  scores: { value: number | null; at: string }[];
+  timeZone: string;
+}) {
+  return (
+    <figure className="space-y-1">
+      <div className="flex h-20 items-end gap-1" aria-hidden>
+        {scores.map((score, index) => (
+          <div
+            key={index}
+            className="flex-1 rounded-t bg-primary/70"
+            style={{ height: `${Math.max(4, score.value ?? 0)}%` }}
+          />
+        ))}
+      </div>
+      <figcaption className="text-xs text-muted-foreground">
+        {label}: oldest → newest
+      </figcaption>
+      <ol className="sr-only">
+        {scores.map((score, index) => (
+          <li key={index}>
+            {formatLocalDate(score.at, timeZone)}:{" "}
+            {score.value === null ? "no score" : Math.round(score.value)}
+          </li>
+        ))}
+      </ol>
+    </figure>
+  );
+}
+
+function Distribution({
+  label,
+  names,
+  counts,
+}: {
+  label: string;
+  names: string[];
+  counts: number[];
+}) {
+  const max = Math.max(1, ...counts);
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium">{label}</p>
+      <dl className="space-y-1.5">
+        {names.map((name, index) => (
+          <div key={name} className="flex items-center gap-2 text-sm">
+            <dt className="w-12 shrink-0 text-muted-foreground">{name}</dt>
+            <dd className="flex flex-1 items-center gap-2">
+              <span
+                className="h-2.5 rounded-full bg-chart-2"
+                style={{ width: `${(counts[index] / max) * 100}%` }}
+                aria-hidden
+              />
+              <span className="tabular-nums">{counts[index]}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }

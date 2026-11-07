@@ -10,7 +10,9 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Pronunciation" };
 
-export default function PronunciationPage() {
+export default function PronunciationPage({
+  searchParams,
+}: PageProps<"/pronunciation">) {
   return (
     <PageContainer>
       <PageHeader
@@ -19,13 +21,18 @@ export default function PronunciationPage() {
         description="Bir cümle seç, önce dinle, sonra sesli oku. Azure kelime ve ses düzeyinde puan verir; zorlandığın sesler için Türkçe ipuçları görürsün."
       />
       <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
-        <Loader />
+        <Loader searchParams={searchParams} />
       </Suspense>
     </PageContainer>
   );
 }
 
-async function Loader() {
+async function Loader({
+  searchParams,
+}: {
+  searchParams: PageProps<"/pronunciation">["searchParams"];
+}) {
+  const { set } = await searchParams;
   const user = await getCurrentUser();
   const supabase = await createClient();
   const [profile, attempts, { data: pool }] = await Promise.all([
@@ -43,6 +50,7 @@ async function Loader() {
     <PronunciationLab
       attempts={attempts}
       dialect={profile.dialect === "en-GB" ? "en-GB" : "en-US"}
+      initialSet={typeof set === "string" ? set : null}
       pool={(pool ?? [])
         .filter((item) => item.phrase.length <= MAX_REFERENCE_CHARS)
         .map((item) => ({

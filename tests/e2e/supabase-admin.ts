@@ -42,7 +42,7 @@ export async function deleteE2EUser() {
 /** Inserts a task for the e2e learner on their current local day. */
 export async function addE2EAssignment(task: {
   title: string;
-  kind: "rewrite" | "interview_answer" | "follow_up";
+  kind: "rewrite" | "interview_answer" | "follow_up" | "listening";
   instructions?: string;
 }) {
   const client = admin();

@@ -4,7 +4,13 @@ Responsive PWA personal AI English coach for Turkish-speaking professionals — 
 adaptive, and continuous across sessions. The product specification
 (`English_Mode_PRD_v1.md`) is kept locally and is not part of this repository.
 
-> **Status: Milestone 7 — spoken coach, listening and pronunciation.** The Pronunciation lab
+> **Status: Milestone 8a — adaptive plan and analytics.** A weekly focus ranks speaking,
+> listening, pronunciation, vocabulary and writing from measured signals (scores, recency,
+> backlog; unmeasured skills are labelled, not scored) and drives a 5-minute skill slot in the
+> daily plan (listening and pronunciation tasks auto-complete when practised). Progress shows
+> listening and pronunciation trends, the weakest sounds and when you practise; Settings shows
+> estimated monthly cost (no cap). Four new scenarios (offer negotiation, recruiter screen,
+> design-decision review, AI meetup). Milestone 7: The Pronunciation lab
 > scores read-aloud sentences with Azure pronunciation assessment (overall, accuracy, fluency,
 > completeness; prosody for en-US only, otherwise shown as unavailable), per word and per IPA
 > sound, with Turkish tips for sounds Turkish speakers commonly substitute. Sentences come from
@@ -153,7 +159,8 @@ tests/unit, tests/e2e
 | 6   | Recorded voice + transcription                  | ✅     |
 | 7a  | Spoken coach (TTS), voice mode, listening       | ✅     |
 | 7b  | Pronunciation lab, translations, hints          | ✅     |
-| 8   | Adaptive planning, notifications                |        |
+| 8a  | Weekly focus, skill tasks, analytics, cost view | ✅     |
+| 8b  | Reminders and push notifications                |        |
 
 ## Known limitations
 
@@ -171,8 +178,8 @@ tests/unit, tests/e2e
   realtime duplex call: Claude has no realtime voice API, so the PRD's OpenAI Realtime plan was
   replaced to keep one coach. TTS is billed per character (`ai_usage_logs.characters`) and
   counts toward the same burst limits. Settings → Microphone picks the recording input.
-- Listening exercises and pronunciation attempts are not yet part of the daily assignment plan
-  or progress charts.
+- Cost figures are estimates at list prices (Anthropic per token, Azure per audio hour or
+  character); the provider invoices are authoritative.
 - Pronunciation scores are Azure's automatic estimate against its native-speaker model, shown
   with that caveat. en-GB assessment returns sound-level scores without sound names, so the lab
   shows word-level results and says so (en-US gives IPA sounds and prosody). Recordings are

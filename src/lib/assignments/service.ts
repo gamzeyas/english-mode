@@ -26,6 +26,8 @@ import { SessionError } from "@/lib/sessions/errors";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { Json, Tables } from "@/types/database";
+import { loadSkillSignals } from "@/lib/learning/skill-signals";
+import { rankFocus, slotSkills } from "@/lib/learning/skills";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 type AssignmentRow = Tables<"assignments">;
@@ -76,6 +78,12 @@ function hrefFor(row: AssignmentRow): string | null {
       return payload.scenarioSlug
         ? `/scenarios/${payload.scenarioSlug}?assignment=${row.id}`
         : `/conversation/new?assignment=${row.id}`;
+    case "listening":
+      return "/listening";
+    case "pronunciation":
+      return payload.setSlug
+        ? `/pronunciation?set=${encodeURIComponent(payload.setSlug)}`
+        : "/pronunciation";
     default:
       return null;
   }
@@ -133,7 +141,7 @@ async function plannerInput(
   profile: Profile,
   dayKey: string,
 ): Promise<PlannerInput> {
-  const [scenarios, due, recent, pattern] = await Promise.all([
+  const [scenarios, due, recent, pattern, skills] = await Promise.all([
     listScenarios(),
     supabase
       .from("learning_items")
@@ -156,6 +164,7 @@ async function plannerInput(
       .order("last_seen_at", { ascending: false })
       .limit(1)
       .maybeSingle(),
+    loadSkillSignals(supabase, user.id),
   ]);
 
   const slugById = new Map(scenarios.map((s) => [s.id, s.slug]));
@@ -182,6 +191,8 @@ async function plannerInput(
       personaName: s.persona.name,
     })),
     recentScenarioSlugs: recentSlugs,
+    skillOrder: slotSkills(rankFocus(skills.signals)),
+    pronunciationSet: skills.pronunciationSet,
     topPattern:
       pattern.data && last?.original && last.improved
         ? {
@@ -440,30 +451,68 @@ export async function submitAnswer(
 }
 
 /** Review tasks are done once the learner has graded at least one card today. */
-export async function completeReview(
+/** Practice done today that lets a self-paced task be marked done. */
+const EVIDENCE = {
+  review: {
+    table: "review_logs",
+    column: "reviewed_at",
+    message:
+      "Önce bugün en az bir kartı tekrar et; sonra görevi tamamlayabilirsin.",
+  },
+  listening: {
+    table: "listening_exercises",
+    column: "completed_at",
+    message: "Önce bugün bir dinleme alıştırmasını tamamla.",
+  },
+  pronunciation: {
+    table: "pronunciation_attempts",
+    column: "created_at",
+    message: "Önce bugün en az bir cümleyi sesli okuyup değerlendir.",
+  },
+} as const;
+
+/** "Mark done" for review, listening and pronunciation tasks. */
+export async function completeAssignment(
   user: CurrentUser,
   profile: Profile,
   id: string,
 ) {
   const supabase = await createClient();
   const row = await loadAssignment(supabase, id);
-  if (row.kind !== "review") throw new SessionError("invalid_request");
+  const evidence = EVIDENCE[row.kind as keyof typeof EVIDENCE];
+  if (!evidence) throw new SessionError("invalid_request");
   if (row.status === "completed") return viewOf(supabase, id);
   requirePending(row);
 
   const { count } = await supabase
-    .from("review_logs")
+    .from(evidence.table)
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .gte("reviewed_at", startOfLocalDay(new Date(), profile.timezone));
-  if (!count) {
-    throw new SessionError(
-      "not_ready",
-      "Önce bugün en az bir kartı tekrar et; sonra görevi tamamlayabilirsin.",
-    );
-  }
+    .gte(evidence.column, startOfLocalDay(new Date(), profile.timezone));
+  if (!count) throw new SessionError("not_ready", evidence.message);
   await setStatus(supabase, user, id, "completed");
   return viewOf(supabase, id);
+}
+
+/**
+ * Finishing listening or pronunciation practice completes the matching
+ * pending task for today (or an overdue one). Best effort: it must never
+ * fail the practice itself.
+ */
+export async function completeSkillTasks(
+  user: CurrentUser,
+  profile: Profile,
+  kind: "listening" | "pronunciation",
+) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("assignments")
+    .update({ status: "completed" })
+    .eq("user_id", user.id)
+    .eq("kind", kind)
+    .eq("status", "pending")
+    .lte("scheduled_for", todayKey(profile));
+  if (error) console.error("[assignments] skill completion", error.code);
 }
 
 export async function skipAssignment(user: CurrentUser, id: string) {

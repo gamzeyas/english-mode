@@ -1,5 +1,5 @@
 import { uuidParam, withApi } from "@/lib/api/handler";
-import { completeReview } from "@/lib/assignments/service";
+import { completeAssignment } from "@/lib/assignments/service";
 
 /** POST /api/assignments/:id/complete -> assignment (review task done once a card was graded today) */
 export const POST = withApi(
@@ -10,7 +10,7 @@ export const POST = withApi(
   ) => {
     const { id } = await params;
     return {
-      assignment: await completeReview(user, profile, uuidParam.parse(id)),
+      assignment: await completeAssignment(user, profile, uuidParam.parse(id)),
     };
   },
 );

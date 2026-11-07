@@ -14,6 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { InstallApp } from "@/components/pwa/install-app";
 import { DataControls } from "@/components/settings/data-controls";
+import { getUsageSummary } from "@/lib/account/usage";
 import { MicrophonePicker } from "@/components/settings/microphone-picker";
 import { signOut } from "@/lib/auth/actions";
 import { getActiveConsents, getCurrentUser, getProfile } from "@/lib/auth/dal";
@@ -42,6 +43,7 @@ async function SettingsContent() {
     getProfile(),
     getActiveConsents(),
   ]);
+  const usage = await getUsageSummary(user);
   const active = new Set(consents.map((consent) => consent.consent_type));
   const purpose = purposeOptions.find(
     (o) => o.value === profile.purpose,
@@ -124,6 +126,19 @@ async function SettingsContent() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Usage &amp; cost</CardTitle>
+          <CardDescription>
+            Bu ayki tahmini harcama (liste fiyatlarıyla; kesin tutar sağlayıcı
+            faturasındadır). Harcama sınırı yok, sadece görünürlük.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <UsageSummary usage={usage} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Your data</CardTitle>
           <CardDescription>
             Dışa aktar ya da hesabını tamamen sil (KVKK/GDPR).
@@ -151,6 +166,52 @@ async function SettingsContent() {
           </form>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+const usd = (value: number) =>
+  `$${value < 0.01 && value > 0 ? value.toFixed(4) : value.toFixed(2)}`;
+
+function UsageSummary({
+  usage,
+}: {
+  usage: Awaited<ReturnType<typeof getUsageSummary>>;
+}) {
+  if (usage.calls === 0)
+    return (
+      <p className="text-sm text-muted-foreground">Bu ay henüz kullanım yok.</p>
+    );
+  return (
+    <div className="space-y-4 text-sm">
+      <dl className="grid grid-cols-3 gap-3">
+        <Row label={`This month (${usage.month})`} value={usd(usage.total)} />
+        <Row label="Month projection" value={usd(usage.projected)} />
+        <Row label="Calls" value={String(usage.calls)} />
+      </dl>
+      <dl className="grid gap-1">
+        {usage.providers.map((p) => (
+          <div key={p.provider} className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">{p.provider}</dt>
+            <dd className="tabular-nums">{usd(p.cost)}</dd>
+          </div>
+        ))}
+      </dl>
+      <details>
+        <summary className="flex min-h-10 cursor-pointer items-center font-medium">
+          By feature
+        </summary>
+        <dl className="grid gap-1 pt-1">
+          {usage.operations.map((op) => (
+            <div key={op.label} className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">
+                {op.label} · {op.calls}
+              </dt>
+              <dd className="tabular-nums">{usd(op.cost)}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </div>
   );
 }

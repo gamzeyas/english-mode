@@ -31,6 +31,8 @@ import { VoiceInput } from "@/components/voice/voice-input";
 import { useServerState } from "@/lib/use-server-state";
 
 const MAX_ANSWER = 4000;
+/** Practised on another page; "Mark done" checks that it happened today. */
+const SELF_PACED = new Set(["review", "listening", "pronunciation"]);
 
 const statusLabels: Record<AssignmentView["status"], string> = {
   pending: "To do",
@@ -161,7 +163,7 @@ export function AssignmentCard({
                 Start <ArrowRight aria-hidden />
               </Link>
             </Button>
-            {assignment.kind === "review" && (
+            {SELF_PACED.has(assignment.kind) && (
               <Button
                 variant="outline"
                 className="h-11"

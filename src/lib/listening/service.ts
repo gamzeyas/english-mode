@@ -18,6 +18,7 @@ import {
   type ListeningResult,
 } from "@/lib/listening/content";
 import { gradeDictation } from "@/lib/listening/grade";
+import { completeSkillTasks } from "@/lib/assignments/service";
 import { SessionError } from "@/lib/sessions/errors";
 import { dialectOf, synthesize } from "@/lib/speech/speak";
 import type { SpeechRate } from "@/lib/speech/tts";
@@ -191,6 +192,7 @@ export async function listeningAudio(
 
 export async function submitListeningAnswers(
   user: CurrentUser,
+  profile: Profile,
   id: string,
   answers: { dictation?: string[]; choices?: (number | null)[] },
 ): Promise<ListeningExerciseView> {
@@ -247,6 +249,7 @@ export async function submitListeningAnswers(
     .select("*")
     .maybeSingle();
   if (error) throw error;
+  if (data) await completeSkillTasks(user, profile, "listening");
   return toView(data ?? (await loadRow(user, id)));
 }
 

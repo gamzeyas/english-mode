@@ -72,10 +72,13 @@ export function PronunciationLab({
   attempts: initialAttempts,
   pool,
   dialect,
+  initialSet,
 }: {
   attempts: PronunciationAttemptView[];
   pool: PoolPhrase[];
   dialect: "en-US" | "en-GB";
+  /** Opened from a plan task: that practice set starts expanded. */
+  initialSet: string | null;
 }) {
   const [attempts, setAttempts] = useServerState(initialAttempts);
   const [tab, setTab] = useState<"sets" | "pool" | "custom">("sets");
@@ -129,7 +132,11 @@ export function PronunciationLab({
       {tab === "sets" && (
         <div className="grid gap-3 md:grid-cols-2">
           {PRACTICE_SETS.map((set) => (
-            <details key={set.slug} className="rounded-xl border px-4 py-2">
+            <details
+              key={set.slug}
+              open={set.slug === initialSet || undefined}
+              className="rounded-xl border px-4 py-2"
+            >
               <summary className="flex min-h-11 cursor-pointer flex-col justify-center">
                 <span className="font-medium">{set.title}</span>
                 <span lang="tr" className="text-xs text-muted-foreground">

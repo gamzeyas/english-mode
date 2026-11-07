@@ -1,6 +1,7 @@
 import "server-only";
 import type { CurrentUser, Profile } from "@/lib/auth/dal";
 import { assertAiRateLimit } from "@/lib/ai/rate-limit";
+import { completeSkillTasks } from "@/lib/assignments/service";
 import { recordAudioUsage } from "@/lib/ai/usage";
 import { getServerEnv } from "@/lib/env";
 import { findPracticeSentence } from "@/lib/pronunciation/catalog";
@@ -200,6 +201,7 @@ export async function assessPronunciation(
     .select("*")
     .single();
   if (error) throw error;
+  await completeSkillTasks(user, profile, "pronunciation");
   return toView(data);
 }
 

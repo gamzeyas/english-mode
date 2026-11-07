@@ -1,7 +1,10 @@
+import type { SlotSkill } from "@/lib/learning/skills";
+
 /**
  * Deterministic daily planner (PRD §12). Pure and client-safe: the server
  * feeds it real inputs and stores the result idempotently by `planKey`.
- * Default day: 5 min retrieval + focused conversation + 5 min recap task; a
+ * Default day: 5 min retrieval + focused conversation + a 5-minute skill
+ * task chosen by the weekly focus (pronunciation, listening or writing); a
  * 5-minute day is a single task and still counts.
  */
 export type AssignmentKind =
@@ -10,7 +13,9 @@ export type AssignmentKind =
   | "roleplay"
   | "rewrite"
   | "interview_answer"
-  | "follow_up";
+  | "follow_up"
+  | "listening"
+  | "pronunciation";
 
 export const kindLabels: Record<AssignmentKind, string> = {
   review: "Review",
@@ -19,6 +24,8 @@ export const kindLabels: Record<AssignmentKind, string> = {
   rewrite: "Rewrite",
   interview_answer: "Interview answer",
   follow_up: "Follow-up",
+  listening: "Listening",
+  pronunciation: "Pronunciation",
 };
 
 /** Kinds completed by submitting a written answer. */
@@ -43,6 +50,9 @@ export type AssignmentPayload = {
   promptKey?: string;
   swappedFrom?: string;
   swapCount?: number;
+  listeningKind?: "dictation" | "comprehension";
+  /** Pronunciation: the practice set to open. */
+  setSlug?: string;
 };
 
 export type PlannedTask = {
@@ -62,6 +72,10 @@ export type PlannerInput = {
   /** Scenario slugs, most recently practiced first. */
   recentScenarioSlugs: string[];
   topPattern: { key: string; original: string; improved: string } | null;
+  /** Skill-slot candidates, most needed first (see rankFocus). */
+  skillOrder?: SlotSkill[];
+  /** The practice set to suggest: the weakest attempted, else unexplored. */
+  pronunciationSet?: { slug: string; title: string } | null;
 };
 
 export const MAX_SWAPS = 3;
@@ -183,6 +197,61 @@ function interviewTask(
   };
 }
 
+function listeningTask(
+  dayKey: string,
+  offset: number,
+  suffix = "skill",
+): PlannedTask {
+  const dictation = (dayIndex(dayKey) + offset) % 2 === 0;
+  return {
+    planKey: `${dayKey}:${suffix}`,
+    kind: "listening",
+    title: dictation ? "Listening: dictation" : "Listening: short dialogue",
+    instructions: dictation
+      ? "Listen to five sentences and type what you hear. Replay slowly if you need to."
+      : "Listen to a short dialogue and answer three questions before reading the transcript.",
+    estimatedMinutes: 5,
+    payload: { listeningKind: dictation ? "dictation" : "comprehension" },
+  };
+}
+
+function pronunciationTask(
+  dayKey: string,
+  set: { slug: string; title: string },
+  suffix = "skill",
+): PlannedTask {
+  return {
+    planKey: `${dayKey}:${suffix}`,
+    kind: "pronunciation",
+    title: `Pronunciation: ${set.title}`,
+    instructions:
+      "Listen to two sentences from this set, read each aloud and retry the words marked in red.",
+    estimatedMinutes: 5,
+    payload: { setSlug: set.slug },
+  };
+}
+
+/**
+ * The 5-minute skill slot: the most needed skill on two days out of four,
+ * the next two on the others, so nothing is neglected for long.
+ */
+function skillTask(input: PlannerInput): PlannedTask {
+  const order = input.skillOrder?.length ? input.skillOrder : ["writing"];
+  const cycle = [
+    order[0],
+    order[1] ?? order[0],
+    order[0],
+    order[2] ?? order[0],
+  ];
+  const skill = cycle[dayIndex(input.dayKey) % cycle.length];
+  if (skill === "pronunciation" && input.pronunciationSet)
+    return pronunciationTask(input.dayKey, input.pronunciationSet);
+  if (skill === "listening") return listeningTask(input.dayKey, 0);
+  return input.topPattern
+    ? rewriteTask(input.dayKey, input.topPattern)
+    : interviewTask(input.dayKey, 0);
+}
+
 /** The main practice slot alternates free chat and roleplay day by day. */
 function mainTask(input: PlannerInput, minutes: number): PlannedTask {
   const [scenario] = rankScenarios(input.scenarios, input.recentScenarioSlugs);
@@ -205,16 +274,11 @@ export function planDay(input: PlannerInput): PlannedTask[] {
 
   const tasks: PlannedTask[] = [];
   if (hasDue) tasks.push(reviewTask(input));
-  const recap = budget >= 25;
-  const mainMinutes = budget - (hasDue ? 5 : 0) - (recap ? 5 : 0);
+  // A 15-minute day without reviews still fits a short skill task.
+  const skill = budget >= 25 || !hasDue;
+  const mainMinutes = budget - (hasDue ? 5 : 0) - (skill ? 5 : 0);
   tasks.push(mainTask(input, mainMinutes));
-  if (recap) {
-    tasks.push(
-      input.topPattern
-        ? rewriteTask(input.dayKey, input.topPattern)
-        : interviewTask(input.dayKey, 0),
-    );
-  }
+  if (skill) tasks.push(skillTask(input));
   return tasks;
 }
 
@@ -269,6 +333,16 @@ export function alternativeFor(
       break;
     case "interview_answer":
       next = interviewTask(input.dayKey, attempt + 1, suffix);
+      break;
+    case "listening":
+      // Odd swaps flip dictation ↔ dialogue, even ones offer writing.
+      next =
+        attempt % 2 === 1
+          ? listeningTask(input.dayKey, attempt, suffix)
+          : interviewTask(input.dayKey, attempt, suffix);
+      break;
+    case "pronunciation":
+      next = listeningTask(input.dayKey, attempt, suffix);
       break;
   }
   if (!next) return null;

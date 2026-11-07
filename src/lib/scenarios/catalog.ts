@@ -165,6 +165,149 @@ export const scenarioCatalog: Scenario[] = [
     ],
     durationOptions: [5, 10],
   },
+  {
+    id: "catalog-salary",
+    slug: "salary-negotiation",
+    title: "Negotiate your job offer",
+    category: "career",
+    difficulty: "hard",
+    persona: {
+      key: "salary_negotiator",
+      name: "Daniel",
+      role: "Head of Design, Berlin scale-up",
+      style: "Warm but budget-conscious. Trades on benefits before salary.",
+    },
+    summary:
+      "You have an offer. Ask for a better package without risking the relationship.",
+    goals: [
+      "Thank them and show you're excited about the role",
+      "Ask for a higher salary with one concrete reason",
+      "Negotiate one non-salary item (remote days, start date or learning budget)",
+    ],
+    rubric: [
+      {
+        key: "clarity",
+        label: "Clarity",
+        description: "The ask is specific: a number or a concrete change.",
+      },
+      {
+        key: "justification",
+        label: "Justification",
+        description: "Backs the ask with value, not need.",
+      },
+      {
+        key: "politeness",
+        label: "Polite firmness",
+        description: "Holds a position while staying positive.",
+      },
+      {
+        key: "language_patterns",
+        label: "Language patterns",
+        description:
+          "Hedging and conditionals: “Would it be possible…”, “If we could…”.",
+      },
+    ],
+    durationOptions: [5, 10],
+  },
+  {
+    id: "catalog-recruiter-screen",
+    slug: "recruiter-phone-screen",
+    title: "Recruiter phone screen for a role abroad",
+    category: "career",
+    difficulty: "medium",
+    persona: {
+      key: "professional_interviewer",
+      name: "Oliver",
+      role: "Tech recruiter, London",
+      style: "Brisk and practical. Checks visa, notice period and motivation.",
+    },
+    summary:
+      "A 10-minute screening call: motivation, availability and relocation.",
+    goals: [
+      "Explain why you want to work abroad in two sentences",
+      "Give your notice period and relocation plans clearly",
+      "Ask about the next steps in the process",
+    ],
+    rubric: interviewRubric,
+    durationOptions: [5, 10],
+  },
+  {
+    id: "catalog-product-owner",
+    slug: "defend-a-design-decision",
+    title: "Defend a design decision",
+    category: "client",
+    difficulty: "medium",
+    persona: {
+      key: "product_owner",
+      name: "Hannah",
+      role: "Product owner, fintech app",
+      style: "Analytical. Asks for data and trade-offs, not opinions.",
+    },
+    summary:
+      "Explain why you chose a design direction and what you'd do if it fails.",
+    goals: [
+      "State the decision and the user problem it solves",
+      "Support it with one piece of evidence",
+      "Offer a fallback or a test plan",
+    ],
+    rubric: [
+      {
+        key: "clarity",
+        label: "Clarity",
+        description: "Decision, reason and trade-off are easy to follow.",
+      },
+      {
+        key: "structured_examples",
+        label: "Evidence",
+        description: "A concrete data point, test or user quote.",
+      },
+      {
+        key: "language_patterns",
+        label: "Language patterns",
+        description: "Cause and contrast: “because”, “so that”, “whereas”.",
+      },
+    ],
+    durationOptions: [5, 10, 20],
+  },
+  {
+    id: "catalog-meetup",
+    slug: "ai-meetup-networking",
+    title: "Networking at an AI meetup",
+    category: "social",
+    difficulty: "medium",
+    persona: {
+      key: "friendly_partner",
+      name: "Sofia",
+      role: "Product designer at a Berlin AI meetup",
+      style: "Curious and talkative. Swaps tool tips and job leads.",
+    },
+    summary:
+      "Introduce yourself, talk about AI tools you use and exchange contacts.",
+    goals: [
+      "Introduce what you do in one sentence",
+      "Share one AI tool you use and why",
+      "Suggest staying in touch (LinkedIn or coffee)",
+    ],
+    rubric: [
+      {
+        key: "naturalness",
+        label: "Naturalness",
+        description: "Sounds relaxed and genuine.",
+      },
+      {
+        key: "turn_taking",
+        label: "Turn taking",
+        description: "Asks back and builds on the other person's answers.",
+      },
+      {
+        key: "language_patterns",
+        label: "Language patterns",
+        description:
+          "Small-talk phrases: “What brings you here?”, “I've been…”.",
+      },
+    ],
+    durationOptions: [5, 10],
+  },
 ];
 
 export const scenarioCategoryLabels: Record<Scenario["category"], string> = {

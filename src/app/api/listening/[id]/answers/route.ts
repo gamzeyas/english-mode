@@ -13,14 +13,19 @@ const bodySchema = z.object({
 /** POST /api/listening/:id/answers {dictation | choices} -> graded {exercise} */
 export const POST = withApi(
   async (
-    { user },
+    { user, profile },
     request: Request,
     { params }: RouteContext<"/api/listening/[id]/answers">,
   ) => {
     const { id } = await params;
     const body = await readJson(request, bodySchema);
     return {
-      exercise: await submitListeningAnswers(user, uuidParam.parse(id), body),
+      exercise: await submitListeningAnswers(
+        user,
+        profile,
+        uuidParam.parse(id),
+        body,
+      ),
     };
   },
 );

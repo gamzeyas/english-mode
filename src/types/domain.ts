@@ -31,6 +31,8 @@ export type PersonaKey =
   | "professional_interviewer"
   | "founder_investor"
   | "client_stakeholder"
+  | "salary_negotiator"
+  | "product_owner"
   | "pronunciation_coach";
 
 export type ScenarioCategory = "career" | "founder" | "client" | "social";

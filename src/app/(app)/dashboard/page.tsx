@@ -5,6 +5,7 @@ import {
   ArrowRight,
   CalendarDays,
   Check,
+  Compass,
   ClipboardCheck,
   Layers,
   Pencil,
@@ -29,6 +30,8 @@ import { nextMatchedAt } from "@/lib/assessment/tasks";
 import { kindLabels, rankScenarios } from "@/lib/assignments/planner";
 import { getAssignmentsOverview } from "@/lib/assignments/service";
 import { formatLocalDate } from "@/lib/learning/day";
+import { loadSkillSignals } from "@/lib/learning/skill-signals";
+import { rankFocus, skillLabelsTr, type SkillKey } from "@/lib/learning/skills";
 import { getLearningItems, getWeeklyStats } from "@/lib/learning/queries";
 import { isDue } from "@/lib/learning/pool";
 import { listScenarios } from "@/lib/scenarios/queries";
@@ -54,6 +57,10 @@ export default function DashboardPage() {
           <DueCard />
         </Suspense>
       </div>
+
+      <Suspense fallback={<Skeleton className="h-40 rounded-xl" />}>
+        <FocusCard />
+      </Suspense>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Suspense fallback={<Skeleton className="h-48 rounded-xl" />}>
@@ -342,6 +349,55 @@ async function DueCard() {
             </Link>
           </Button>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const focusLinks: Record<SkillKey, string> = {
+  speaking: "/conversation/new",
+  listening: "/listening",
+  pronunciation: "/pronunciation",
+  vocabulary: "/review",
+  writing: "/writing",
+};
+
+/** Weekly focus from measured signals; drives the daily skill slot too. */
+async function FocusCard() {
+  const user = await getCurrentUser();
+  const supabase = await createClient();
+  const { signals } = await loadSkillSignals(supabase, user.id);
+  const focus = rankFocus(signals).slice(0, 3);
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Compass aria-hidden className="size-4 text-primary" />
+          Bu haftanın odağı
+        </CardTitle>
+        <CardDescription>
+          Son 4 haftadaki gerçek çalışmana göre; günlük plan da buna göre
+          değişir.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ol className="grid gap-2 md:grid-cols-3">
+          {focus.map((item, index) => (
+            <li key={item.skill}>
+              <Link
+                href={focusLinks[item.skill]}
+                className="flex min-h-11 flex-col rounded-lg border px-3 py-2 hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              >
+                <span className="text-sm font-medium">
+                  {index + 1}. {skillLabelsTr[item.skill]}
+                </span>
+                <span lang="tr" className="text-xs text-muted-foreground">
+                  {item.reasonTr}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
       </CardContent>
     </Card>
   );

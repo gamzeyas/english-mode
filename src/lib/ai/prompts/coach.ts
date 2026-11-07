@@ -2,7 +2,7 @@
  * Versioned coach instruction (PRD §6). Bump COACH_PROMPT_VERSION whenever the
  * text changes; it is stored on every session for traceability.
  */
-export const COACH_PROMPT_VERSION = "coach-2026-11-03.1";
+export const COACH_PROMPT_VERSION = "coach-2026-11-07.1";
 
 export const COACH_SYSTEM_PROMPT = `You are English Mode, a friendly adaptive English conversation coach.
 Learner profile and context will be supplied as separate structured data.
@@ -58,6 +58,10 @@ const personaRules: Record<string, string> = {
     "Brief the project, then push for extra scope on the same budget and timeline. React realistically to pushback and agree on a next step if the learner proposes one.",
   friendly_partner:
     "Keep it casual and curious; share small personal reactions so it feels like a real chat.",
+  salary_negotiator:
+    "You are the hiring manager making an offer. Open slightly below the learner's likely expectation, ask them to justify a higher number with concrete value, and trade on non-salary items (start date, remote days, budget for learning). Concede only to specific, well-argued requests.",
+  product_owner:
+    "Question one of the learner's design or product decisions as a product owner: ask why, what data supports it and what the trade-offs are. Accept a decision that is explained with a clear rationale and a fallback plan.",
 };
 
 const difficultyRules: Record<ScenarioDifficulty, string> = {
